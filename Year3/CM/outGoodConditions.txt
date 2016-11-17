@@ -1,0 +1,23 @@
+initial time step = 1e6
+initial xpos p1 = 0.4
+initial xpos p2 = 0.6
+if trackDist < 0.75*distTest:
+	tSS = tSS/2
+
+initial time step = 0.0000001
+initial xpos particle 1 = 0.49999
+initial xpos particle 2 = 0.500001
+num time steps = 200000000
+plotEveryKthStep = 500000
+
+CHANGE: 2  step size: 1e-007  velocity: 5.449218759e-008
+CHANGE: 14  step size: 5e-008  velocity: 1.634765651e-007
+CHANGE: 86  step size: 2.5e-008  velocity: 4.904297603e-007
+CHANGE: 518  step size: 1.25e-008  velocity: 1.471291046e-006
+CHANGE: 3110  step size: 6.25e-009  velocity: 4.413920866e-006
+CHANGE: 18660  step size: 3.125e-009  velocity: 1.324191604e-005
+CHANGE: 111842  step size: 1.5625e-009  velocity: 3.972586194e-005
+CHANGE: 664665  step size: 7.8125e-010  velocity: 0.0001191776534
+CHANGE: 3683409  step size: 3.90625e-010  velocity: 0.000357533031
+CHANGE: 14137996  step size: 1.953125e-010  velocity: 0.001072599193
+POSITIONS DIFFERENT AFTER t=29149487  difference=-4.690692279e-013
