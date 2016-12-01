@@ -35,14 +35,18 @@ windowParam = "PARAMETERS";
 #windowName3 = "10%";
 #img = cv2.imread("road-images2016-DURHAM/vlcsnap-00317.png");
 #imgB = cv2.imread("road-images2016-DURHAM/vlcsnap-00314.png")
-
-nums = ["00007", "00111", "00194", "00255"]
+#nums = ["00194"]#
+nums = ["00390", "00413", "00131", "00292"]
 ORIGINAL = []
 EDITED = []
 
 MULTIPLIER = 0.65
 
-radii = [14, 11, 8, 5, 2, 12, 4, 3, 2, 10, 1]
+#radii = [14, 11, 8, 5, 2, 12, 4, 3, 2, 10, 1]
+#radii = [5, 2, 4, 3, 2, 1]
+#radii = [10, 7, 4, 8, 3, 1]
+radii = [10, 7, 4, 8, 3, 5, 2, 1]
+radii2 = [3,2,1,5]
 
 for i in nums:
     name = "road-images2016-DURHAM/vlcsnap-" + i + ".png"
@@ -84,10 +88,17 @@ def ransac(imgIN, threshold, iterations):
     bestPointB = (height-1, width-1)
     bestGradient = 0
     bestC = 0
+    percentInLine2 = 0
+    lengthLine2 = 0
+    bestPointA2 = (0,0)
+    bestPointB2 = (height-1, width-1)
+    bestGradient2 = 0
+    bestC2 = 0
     for col in range(0,imgIN.shape[1]):
             for row in range((int)(imgIN.shape[0]*MULTIPLIER),imgIN.shape[0]): #//2 because dont care about top half
                 if imgIN[row,col][0] == 255 and imgIN[row,col][1] == 255 and imgIN[row,col][2] == 255:
                     whitePoints.append((row,col))
+    #print(len(whitePoints))
     for it in range(0,iterations):
         whiteCounter = 0
         pointCounter = 0
@@ -130,30 +141,22 @@ def ransac(imgIN, threshold, iterations):
                 if(imgIN[y,x][0] == 255 and imgIN[y,x][1] == 255 and imgIN[y,x][2] == 255): #If the point is white i.e. part of an edge
                     whiteCounter+=1
                     pointCounter+=1
-                    #print(whiteCounter, pointCounter)
                 else:
                     pointCounter+=1
-            #imgIN[y,x] = [0,0,255]
-        """for y in range(ymin, ymax):
-            x = getX(y, gradient, c)
-            if(x >= width):
-                x = width-1
-            if(imgIN[y,x][0] == 255 and imgIN[y,x][1] == 255 and imgIN[y,x][2] == 255):
-                whiteCounter += 1
-                pointCounter +=1
-            elif(imgIN[y,x][0] == 0 and imgIN[y,x][1] == 0 and imgIN[y,x][2] == 255): # if the point is part of an edge, but not already been counted
-                pointCounter+=1
-            imgIN[y,x] = [0,0,255]"""
-        #print(((whiteCounter/pointCounter)*100), percentInLine, lengthLine)
-        if (whiteCounter/pointCounter) >= percentInLine and pointCounter >= 100:
+        if gradient <= 0 and gradient > -1 and ((pointCounter > 50 and (whiteCounter/pointCounter) >= percentInLine) or (pointCounter > 25 and (whiteCounter/pointCounter) >= 0.8)):
             percentInLine = (whiteCounter/pointCounter)
             lengthLine = pointCounter
             bestPointA = (ymin,xmin)
             bestPointB = (ymax,xmax)
             bestGradient = gradient
             bestC = c
-            print(bestPointA, bestPointB)
-            #print("Y")
+        elif gradient > 0 and gradient < 1 and ((pointCounter > 50 and (whiteCounter/pointCounter) >= percentInLine2) or (pointCounter > 25 and (whiteCounter/pointCounter) >= 0.8)):
+            percentInLine2 = (whiteCounter/pointCounter)
+            lengthLine2 = pointCounter
+            bestPointA2 = (ymin,xmin)
+            bestPointB2 = (ymax,xmax)
+            bestGradient2 = gradient
+            bestC2 = c
     for x in range(min(bestPointA[1], bestPointB[1]), max(bestPointA[1], bestPointB[1])):
             y = getY(x, bestGradient, bestC) #int(gradient*x + c)
             if(y < height) and (y >= height*MULTIPLIER):
@@ -161,76 +164,109 @@ def ransac(imgIN, threshold, iterations):
                     imgIN[y,x] = [0,255,0]
                 else:
                     imgIN[y,x] = [0,0,255]
-    print(percentInLine, lengthLine, bestPointA, bestPointB)
+    for x in range(min(bestPointA2[1], bestPointB2[1]), max(bestPointA2[1], bestPointB2[1])):
+            y = getY(x, bestGradient2, bestC2) #int(gradient*x + c)
+            if(y < height) and (y >= height*MULTIPLIER):
+                if(imgIN[y,x][0] == 255 and imgIN[y,x][1] == 255 and imgIN[y,x][2] == 255):
+                    imgIN[y,x] = [0,255,0]
+                else:
+                    imgIN[y,x] = [255,0,0]
+    #print("best gradient =", bestGradient, " best gradient2 =", bestGradient2, "line1 len:", lengthLine, "line2 len:", lengthLine2)#percentInLine, lengthLine, bestPointA, bestPointB)
+    print("Done ransac")
     return imgIN
 
+def mostCommon(img, attribute): #Attribute: 0 = hue, 1 = sat, 2 = val
+    colours = {}
+    best = 0
+    step = 1
+    for col in range(0,img.shape[1], step):
+        for row in range((int)(img.shape[0]*MULTIPLIER),img.shape[0], step):
+            if colours.get(img[row,col][attribute]):
+                colours[img[row,col][attribute]]+=1
+            else:
+                colours[img[row,col][attribute]] = 1
+            if colours[img[row,col][attribute]] > best:
+                best = img[row,col][attribute]
+    return best
+
 def changeHue(imgIN, imgOUT, lowH, highH, lowS, highS, lowV, highV):
+    xcutmin = imgIN.shape[1]*0.3
+    xcutmax = imgIN.shape[1]*0.85
+    ycutmax = imgIN.shape[0]*0.64
     for col in range(0,imgIN.shape[1]):
         for row in range((int)(imgIN.shape[0]*MULTIPLIER),imgIN.shape[0]): #//2 because dont care about top half
-            currH = imgIN[row,col][0]
-            currS = imgIN[row,col][1]
-            currV = imgIN[row,col][2]
-            if(currH < lowH or currH > highH or currS < lowS or currS > highS or currV < lowV or currV > highV):
-                if fill == "WHITE":
-                    imgOUT[row,col][2] = 255
-                    imgOUT[row,col][1] = 0
-                else:
-                    imgOUT[row,col][2] = 0
+            if True:#not ((col > xcutmin and col < xcutmax) and row > ycutmax):
+                currH = imgIN[row,col][0]
+                currS = imgIN[row,col][1]
+                currV = imgIN[row,col][2]
+                if(currH < lowH or currH > highH or currS < lowS or currS > highS or currV < lowV or currV > highV):
+                    if fill == "WHITE":
+                        imgOUT[row,col][2] = 255
+                        imgOUT[row,col][1] = 0
+                    else:
+                        imgOUT[row,col][2] = 0
+    print("Done changeHue")
     return imgOUT
 
 def checkAround(img, radii, fill): #Only acts on a single output image
     maxRadius = max(radii)
-    for col in range(maxRadius,img.shape[1]-maxRadius): #+/- radius because of overflow
-        for row in range((int)(img.shape[0]*MULTIPLIER),img.shape[0]-maxRadius): #//2 because dont care about top half
-            for radius in radii:
-                left = img[row, col - radius]
-                up = img[row - radius, col]
-                right = img[row, col + radius]
-                down = img[row + radius, col]
-                if ((up[2] == 255 and up[1] == 0) and (down[2] == 255 and down[1] == 0)) or ((left[2] == 255 and left[1] == 0) and (right[2] == 255 and right[1] == 0)):
-                    img[row,col][2] = 255
-                    img[row,col][1] = 0
+    for radius in radii:
+        for col in range(maxRadius,img.shape[1]-maxRadius): #+/- radius because of overflow
+            for row in range((int)(img.shape[0]*MULTIPLIER),img.shape[0]-maxRadius): #//2 because dont care about top half
+            #for radius in radii:
+                if not(img[row,col][2] == 255 and img[row,col][1] == 0): #if not already white
+                    left = img[row, col - radius]
+                    up = img[row - radius, col]
+                    right = img[row, col + radius]
+                    down = img[row + radius, col]
+                    if ((up[2] == 255 and up[1] == 0) and (down[2] == 255 and down[1] == 0)) or ((left[2] == 255 and left[1] == 0) and (right[2] == 255 and right[1] == 0)):
+                        img[row,col][2] = 255
+                        img[row,col][1] = 0
+    print("Done checkAround")    
     return img
 
+def antiCheckAround(img, radii): #Only acts on a single output image
+    maxRadius = max(radii)
+    for radius in radii:
+        for col in range(maxRadius,img.shape[1]-maxRadius): #+/- radius because of overflow
+            for row in range((int)(img.shape[0]*MULTIPLIER),img.shape[0]-maxRadius): #//2 because dont care about top half
+            #for radius in radii:
+                if (img[row,col][2] == 255 and img[row,col][1] == 0): #if already white
+                    left = img[row, col - radius]
+                    up = img[row - radius, col]
+                    right = img[row, col + radius]
+                    down = img[row + radius, col]
+                    if ((up[2] != 255 and up[1] != 0) and (down[2] != 255 and down[1] != 0)):
+                        img[row,col][0] = (int(up[0])+int(down[0]))//2
+                        img[row,col][1] = (int(up[1])+int(down[1]))//2
+                        img[row,col][2] = (int(up[2])+int(down[2]))//2
+                    elif ((left[2] != 255 and left[1] != 0) and (right[2] != 255 and right[1] != 0)):
+                        img[row,col][0] = (int(left[0])+int(right[0]))//2
+                        img[row,col][1] = (int(left[1])+int(right[1]))//2
+                        img[row,col][2] = (int(left[2])+int(right[2]))//2
+    print("Done antiCheckAround")
+    return img
 
-def isRoad(imgsIN, imgsOUT, radius, fillVal):
-    for i in range(0, len(imgsOUT)):
-        img = imgsOUT[i]
-        for col in range(0,img.shape[1]):
-            for row in range((int)(img.shape[0]*MULTIPLIER),img.shape[0]): #//2 because dont care about top half
-                for x in range(-radius, radius):
-                    for y in range(-radius, radius):
-                        if row + x < 482 and col + y < 640:
-                            pix = img[row+x, col+y]
-                            if fillVal == "WHITE":
-                                if (pix[2] == 255 and pix[1] == 0): #if there is a blocked out pixel in the surrounding location # or (pix[0] == 30 and pix[1] == 255 and pix[2] == 255):
-                                    x = radius
-                                    y = radius
-                                    img[row, col][2] = 254 #block that pixel, but not so affects next check
-                                    img[row, col][1] = 0
-                                elif(x == radius-1 and y == radius-1): #if have checked all pixels, and no surrounding pixels are blocked out
-                                    img[row, col][0] = 30
-                                    img[row, col][1] = 255
-                                    img[row, col][2] = 255
-                            else:
-                                if (pix[2] == 0): #if there is a blocked out pixel in the surrounding location # or (pix[0] == 30 and pix[1] == 255 and pix[2] == 255):
-                                    x = radius
-                                    y = radius
-                                    img[row, col][2] = 1
-                                elif(x == radius-1 and y == radius-1): #if have checked all pixels, and no surrounding pixels are blocked out
-                                    img[row, col][0] = 30
-                                    img[row, col][1] = 255
-                                    img[row, col][2] = 255
+def averageOutX(img):
+    for row in range((int)(img.shape[0]*MULTIPLIER),img.shape[0]):
+        for col in range(2,img.shape[1]-2):
+            #print((img[row,col-1][0] + img[row,col+1][0])//2)
+            img[row,col][0] = (int(img[row,col-1][0]) + int(img[row,col+1][0]) + int(img[row,col-2][0]) + int(img[row,col+2][0]))//4
+            img[row,col][1] = (int(img[row,col-1][1]) + int(img[row,col+1][1]) + int(img[row,col-2][1]) + int(img[row,col+2][1]))//4
+            img[row,col][2] = (int(img[row,col-1][2]) + int(img[row,col+1][2]) + int(img[row,col-2][2]) + int(img[row,col+2][2]))//4
+    return img
+
+def averageOutY(img):
+    for col in range(0,img.shape[1]):
+        for row in range((int)(img.shape[0]*MULTIPLIER),img.shape[0]-2):
+            #print((img[row,col-1][0] + img[row,col+1][0])//2)
+            img[row,col][0] = (int(img[row-1,col][0]) + int(img[row+1,col][0]))//2
+            img[row,col][1] = (int(img[row-1,col][1]) + int(img[row+1,col][1]))//2
+            img[row,col][2] = (int(img[row-1,col][2]) + int(img[row+1,col][2]))//2
+    return img
                 
                                 
 if True:
-    
-        #cv2.namedWindow(nums[i], cv2.WINDOW_NORMAL)
-        #ORIGINAL[i] = cv2.cvtColor(ORIGINAL[i], cv2.COLOR_HSV2BGR)
-        #cv2.imshow(nums[i], ORIGINAL[i])
-        
-
-
     cv2.namedWindow(windowParam, cv2.WINDOW_NORMAL);
     lower_threshold = 70;
     cv2.createTrackbar("Lower Canny threshold", windowParam, lower_threshold, 255, nothing);
@@ -256,15 +292,14 @@ if True:
     keep_processing = True
     update = "UPDATE."
     around = "B"
+    q = False
+    w = False
+    e = False
+    r = False
     while(keep_processing):
         for i in range(0,len(ORIGINAL)):
             ORIGINAL[i] = cv2.cvtColor(ORIGINAL[i], cv2.COLOR_BGR2HSV)
             EDITED[i] = copy.copy(ORIGINAL[i])
-            #EDITED[i] = cv2.cvtColor(EDITED[i], cv2.COLOR_BGR2HSV)
-            
-        """for i in range(0, len(ORIGINAL)):
-            ORIGINAL[i] = cv2.cvtColor(ORIGINAL[i], cv2.COLOR_BGR2HSV)
-            EDITED[i] = cv2.cvtColor(EDITED[i], cv2.COLOR_BGR2HSV)"""
         
         lower_threshold = cv2.getTrackbarPos("Lower Canny threshold", windowParam);
         upper_threshold = cv2.getTrackbarPos("Upper Canny threshold", windowParam);
@@ -277,21 +312,31 @@ if True:
         lower_val = cv2.getTrackbarPos("Lower val", windowParam);
         upper_val = cv2.getTrackbarPos("Upper val", windowParam);
 
-        """for img in range(0,len(ORIGINAL)):
-            EDITED[img] = ORIGINAL[img]"""
-
         if update == "UPDATE":
-            #lower_hue = lower_hue2
-            #upper_hue = upper_hue2
-            #changeHue(ORIGINAL, EDITED, lower_hue, upper_hue, lower_sat, upper_sat, lower_val, upper_val)
             if around == "A":
                 checkAround(ORIGINAL, EDITED, radii, "WHITE")
-            print("DONE")
             for img in range(0,len(ORIGINAL)):
-                EDITED[img] = changeHue(ORIGINAL[img], EDITED[img], lower_hue, upper_hue, lower_sat, upper_sat, lower_val, upper_val)
-                EDITED[img] = checkAround(EDITED[img], radii, "WHITE")
-                EDITED[img] = checkAround(EDITED[img], radii, "WHITE")
-                EDITED[img] = checkAround(EDITED[img], radii, "WHITE")
+                print("BEGIN", nums[img])
+                attr = 0
+                mc = mostCommon(ORIGINAL[img], attr)
+                mc1 = mostCommon(ORIGINAL[img], 1)
+                mc2 = mostCommon(ORIGINAL[img], 2)
+                #print("mc:",mc, mc1, mc2)
+                lower_hue = mc - 20
+                upper_hue = mc + 20
+                if lower_hue < 0:
+                    lower_hue = 0
+                if upper_hue > 255:
+                    upper_hue = 255
+                if q == True:
+                    EDITED[img] = changeHue(ORIGINAL[img], EDITED[img], lower_hue, upper_hue, lower_sat, upper_sat, lower_val, upper_val)
+                if w == True:
+                    EDITED[img] = changeHue(ORIGINAL[img], EDITED[img], lower_hue, upper_hue, lower_sat, upper_sat, lower_val, upper_val)
+                    EDITED[img] = checkAround(EDITED[img], radii, "WHITE")
+                if e == True:
+                    EDITED[img] = changeHue(ORIGINAL[img], EDITED[img], lower_hue, upper_hue, lower_sat, upper_sat, lower_val, upper_val)
+                    EDITED[img] = checkAround(EDITED[img], radii, "WHITE")
+                    EDITED[img] = antiCheckAround(EDITED[img], radii2)
                 EDITED[img] = cv2.cvtColor(EDITED[img], cv2.COLOR_HSV2BGR)
                 ORIGINAL[img] = cv2.cvtColor(ORIGINAL[img], cv2.COLOR_HSV2BGR)
                 cv2.namedWindow(nums[img] + "2", cv2.WINDOW_NORMAL)
@@ -300,11 +345,12 @@ if True:
                 smoothed = cv2.GaussianBlur(EDITED[img],(smoothing_neighbourhood,smoothing_neighbourhood),0);
                 EDITED[img] = cv2.Canny(smoothed, lower_threshold, upper_threshold, apertureSize=sobel_size); #CANNY CHANGES IT TO A 1 CHANNEL IMAGE
                 EDITED[img] = cv2.cvtColor(EDITED[img], cv2.COLOR_GRAY2BGR)
-                EDITED[img] = ransac(EDITED[img], 1,1000)
+                if r == True:
+                    EDITED[img] = ransac(EDITED[img], 1,2000)
                 cv2.namedWindow(nums[img], cv2.WINDOW_NORMAL)
                 cv2.moveWindow(nums[img], 10+img*330, 400)
                 cv2.imshow(nums[img], EDITED[img])
-                print("Done")
+            print("PROCESSING FINISHED\n")
         
         else:
             for img in range(0,len(ORIGINAL)):
@@ -321,40 +367,7 @@ if True:
                 cv2.imshow(nums[img], EDITED[img])
                 #
                 #cv2.namedWindow(nums[img], cv2.WINDOW_NORMAL)
-                #cv2.imshow(nums[img], ORIGINAL[img])
-        
-        """if(update == "UPDATE"):# and (lower_hue2 != lower_hue or upper_hue2 != upper_hue)):
-            for img in range(0,len(ORIGINAL)):
-                EDITED[img] = ORIGINAL[img]
-            lower_hue = lower_hue2
-            upper_hue = upper_hue2
-            changeHue(ORIGINAL, EDITED, lower_hue, upper_hue)
-        elif(update == "RESET"):
-            for img in range(0,len(ORIGINAL)):
-                EDITED[img] = ORIGINAL[img]
- 
-        smoothing_neighbourhood = max(3, smoothing_neighbourhood);
-        if not(smoothing_neighbourhood % 2):
-            smoothing_neighbourhood = smoothing_neighbourhood + 1;
-
-        sobel_size = max(3, sobel_size);
-        if not(sobel_size % 2):
-            sobel_size = sobel_size + 1;
-
-        for img in range(0,len(ORIGINAL)):
-            EDITED[img] = cv2.cvtColor(EDITED[img], cv2.COLOR_HSV2BGR)
-            ORIGINAL[img] = cv2.cvtColor(ORIGINAL[img], cv2.COLOR_HSV2BGR)
-            if update == "UPDATE":
-                #EDITED[img] = ORIGINAL[img]
-                smoothed = cv2.GaussianBlur(EDITED[img],(smoothing_neighbourhood,smoothing_neighbourhood),0);
-                EDITED[img] = cv2.Canny(smoothed, lower_threshold, upper_threshold, apertureSize=sobel_size); #CANNY CHANGES IT TO A 1 CHANNEL IMAGE
-                EDITED[img] = cv2.cvtColor(EDITED[img], cv2.COLOR_GRAY2BGR)
-            cv2.namedWindow(nums[img], cv2.WINDOW_NORMAL)
-            cv2.imshow(nums[img], EDITED[img])
-            #EDITED[img] = ORIGINAL[img]"""
-
-
-        
+                #cv2.imshow(nums[img], ORIGINAL[img])    
             
         key = cv2.waitKey(0);
         if (key == ord('x')):
@@ -371,11 +384,31 @@ if True:
             around = "A"
         elif(key == ord('c')):
             update = "RESET"
+            q = False
+            w = False
+            e = False
+        elif(key == ord('q')):
+            update = "UPDATE"
+            q = True
+            w = False
+            e = False
+        elif(key == ord('w')):
+            update = "UPDATE"
+            w = True
+            q = False
+            e = False
+        elif(key == ord('e')):
+            update = "UPDATE"
+            e = True
+            w = False
+            q = False
+        elif(key == ord('r')):
+            update = "UPDATE"
+            r = not (r and r)
+            print("RANSAC =", r)
         else:
             update = "FALSE"
 
-        """for img in range(0,len(ORIGINAL)):
-            EDITED[img] = ORIGINAL[img]"""
 
 #else:
 #    print("No image loaded from file.")
