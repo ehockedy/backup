@@ -1,30 +1,24 @@
+#BASED ON PROVIDED SURCE CODE
 import reader
 import cv2
 import numpy as np
 import selectlines
 use_svm_autotrain = False;
 
-#selectlines.run(80.0, 2)
-
 def readData():
     trainingAttributes = reader.readTrainingAttributes()
-    print("Read training attributes")
     trainingLabels = reader.readTrainingLabels()
-    print("Read training labels")
     testingAttributes = reader.readTestingAttributes()
-    print("Read testing attributes")
     testingLabels = reader.readTestingLabels()
-    print("Read testing labels")
     return (trainingAttributes, trainingLabels, testingAttributes, testingLabels)
 
-def runSVM(C, G, D, trainingAttributes, trainingLabels, testingAttributes, testingLabels): #1.0, 1.0, 5.0
+def runSVM(C, G, D, trainingAttributes, trainingLabels, testingAttributes, testingLabels): 
     
     varTypes = np.array([cv2.ml.VAR_NUMERICAL]*561 + [cv2.ml.VAR_CATEGORICAL], np.float64)
 
 
     svm = cv2.ml.SVM_create()
-    svm.setKernel(cv2.ml.SVM_LINEAR);
-    #svm.train(cv2.ml.TrainData_create(trainingAttributes, cv2.ml.ROW_SAMPLE, trainingLabels.astype(int), varType = varTypes))
+    svm.setKernel(cv2.ml.SVM_POLY);
 
     #Small C makes the cost of misclassificaiton low ("soft margin"), thus allowing more of them for the sake of wider "cushion".
     #Large C makes the cost of misclassification high ('hard margin"), thus forcing the algorithm to explain the input data stricter and potentially overfit.
@@ -48,7 +42,6 @@ def runSVM(C, G, D, trainingAttributes, trainingLabels, testingAttributes, testi
         svm.train(trainingAttributes, cv2.ml.ROW_SAMPLE, trainingLabels);
         #svm.train(cv2.ml.TrainData_create(trainingAttributes, cv2.ml.ROW_SAMPLE, trainingLabels.astype(int), varType = varTypes))
 
-    print("training done")
     correct = 0
     for i in range(0, len(testingAttributes)):
         # (to get around some kind of OpenCV python interface bug, vertically stack the
@@ -60,8 +53,5 @@ def runSVM(C, G, D, trainingAttributes, trainingLabels, testingAttributes, testi
 
         if result[0] == testingLabels[i]:
             correct += 1
-    print(correct, "of", len(testingAttributes), "=", "%.2f" % (correct/len(testingAttributes)*100) + "%")
-
-#data = readData()
-#runSVM(1.0,1.0,5.0, data[0], data[1], data[2], data[3])
+    return correct, len(testingAttributes)
 

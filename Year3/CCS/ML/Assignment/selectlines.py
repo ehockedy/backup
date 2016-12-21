@@ -1,16 +1,4 @@
-#####################################################################
-
-# Example : select subset of lines from CVS file and write to files
-# basic illustrative python script
-
-# Author : Toby Breckon, toby.breckon@durham.ac.uk
-
-# Copyright (c) 2014 / 2016 School of Engineering & Computing Science,
-#                    Durham University, UK
-# License : LGPL - http://www.gnu.org/licenses/lgpl.html
-
-#####################################################################
-
+#BASED ON PROVIDED SURCE CODE
 import csv
 import cv2
 import numpy as np
@@ -26,12 +14,14 @@ trainy = "Train/y_train.txt"
 testx = "Test/x_test.txt"
 testy = "Test/y_test.txt"
 # load full data set (unsplit)
-readerDataTrain=csv.reader(open(os.path.join(path_to_data, trainx),"rt", encoding='ascii'),delimiter=',')
-readerDataTest=csv.reader(open(os.path.join(path_to_data, testx),"rt", encoding='ascii'),delimiter=',')
-readerClassTrain=csv.reader(open(os.path.join(path_to_data, trainy),"rt", encoding='ascii'),delimiter=',')
-readerClassTest=csv.reader(open(os.path.join(path_to_data, testy),"rt", encoding='ascii'),delimiter=',')
+
 
 def run(n, r):
+        readerDataTrain=csv.reader(open(os.path.join(path_to_data, trainx),"rt", encoding='ascii'),delimiter=',')
+        readerDataTest=csv.reader(open(os.path.join(path_to_data, testx),"rt", encoding='ascii'),delimiter=',')
+        readerClassTrain=csv.reader(open(os.path.join(path_to_data, trainy),"rt", encoding='ascii'),delimiter=',')
+        readerClassTest=csv.reader(open(os.path.join(path_to_data, testy),"rt", encoding='ascii'),delimiter=',')
+
         dataList = []
         for row in readerDataTrain:
                 if len(row) == 0:
@@ -61,20 +51,20 @@ def run(n, r):
         ########### Write Data Set - Example
         # write first N% of the entries to first file
 
-        N = n#50.0
+        N = n
 
         fileA = open("dataTrain.txt", "wt", encoding='ascii')
         writerA = csv.writer(fileA, delimiter=',')
         writerA.writerows(dataList[0:int(math.floor(len(dataList)* (N/100.0)))])
         fileA.close()
-        print("dataTrain.txt done")
+        #print("dataTrain.txt done")
         # write the remaining (100-N)% of the entries of the second file
 
         fileB = open("dataTest.txt", "wt", encoding='ascii')
         writerB = csv.writer(fileB, delimiter=',')
         writerB.writerows(dataList[int(math.floor(len(dataList)* (N/100.0))):len(dataList)])
         fileB.close()
-        print("dataTest.txt done")
+        #print("dataTest.txt done")
 
 
         ####
@@ -83,11 +73,13 @@ def run(n, r):
         writerC = csv.writer(fileC, delimiter=',')
         writerC.writerows(classList[0:int(math.floor(len(classList)* (N/100.0)))])
         fileC.close()
-        print("classTrain.txt done")
+        #print("classTrain.txt done")
         fileD = open("classTest.txt", "wt", encoding='ascii')
         writerD = csv.writer(fileD, delimiter=',')
         writerD.writerows(classList[int(math.floor(len(classList)* (N/100.0))):len(classList)])
         fileD.close()
-        print("classTest.txt done")
+        #print("classTest.txt done")
+
+        #print(len(dataList), len(classList))
 
 #####################################################################

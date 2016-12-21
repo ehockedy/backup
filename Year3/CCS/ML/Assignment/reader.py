@@ -1,18 +1,4 @@
-#####################################################################
-
-# Example : load HAPT data set only
-# basic illustrative python script
-
-# For use with test / training datasets : HAPT-data-set-DU
-
-# Author : Toby Breckon, toby.breckon@durham.ac.uk
-
-# Copyright (c) 2014 / 2016 School of Engineering & Computing Science,
-#                    Durham University, UK
-# License : LGPL - http://www.gnu.org/licenses/lgpl.html
-
-#####################################################################
-
+#BASED ON PROVIDED SOURCE CODE
 import csv
 import cv2
 import os
@@ -25,7 +11,7 @@ inv_classes = {v: k for k, v in classes.items()}
 
 ########### Load Data Set
 
-newDataSplit = True
+newDataSplit = True #THIS IS FOR TEST PURPOSES
 
 if newDataSplit == True:
         path_to_data = "" #"HAPT-data-set-DU"
@@ -81,18 +67,3 @@ def readTestingLabels():
                         label_list.append(row[0])
         testing_labels=np.array(label_list).astype(np.integer)##CHANGED FOR SVM
         return testing_labels
-        
-###########  test output for sanity
-
-"""print(training_attributes)
-print(len(training_attributes))
-print(training_labels)
-print(len(training_labels))
-
-print(testing_attributes)
-print(len(testing_attributes))
-print(testing_labels)
-print(len(testing_labels))"""
-
-#####################################################################
-
