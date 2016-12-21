@@ -1,8 +1,7 @@
-//------------------------------------------------------------------------------
-// <copyright file="DepthBasics.cpp" company="Microsoft">
-//     Copyright (c) Microsoft Corporation.  All rights reserved.
-// </copyright>
-//------------------------------------------------------------------------------
+/*
+Code for identfying position and then tracking location of a users hands using depth images obtained from a Microsoft Kinect v2.
+Adapted from example code included in the Kinect SDK.
+*/
 
 #include "stdafx.h"
 #include <strsafe.h>
@@ -43,7 +42,7 @@ int APIENTRY wWinMain(
 /// </summary>
 CDepthBasics::CDepthBasics() :
 	imgD(Mat(Size(cDepthWidth, cDepthHeight), CV_8UC4, Scalar(0, 0, 0))),
-	imgG(Mat(Size(cDepthWidth, cDepthHeight), CV_8UC4, Scalar(0, 0, 0))),
+	imgG(Mat(Size(cDepthWidth, cDepthHeight), CV_8UC1)),
 	//imgD(Mat(Size(480, 360), CV_8UC4, Scalar(0, 0, 0))),
 	//imgG(Mat(Size(480, 360), CV_8UC4, Scalar(0, 0, 0))),
 	run(0),
@@ -56,6 +55,13 @@ CDepthBasics::CDepthBasics() :
     // create heap storage for depth pixel data in RGBX format
     //m_pDepthRGBX = new RGBQUAD[cDepthWidth * cDepthHeight]; //RGBQUAD has 4 values
 	depthArr = new BYTE[cDepthHeight * cDepthWidth]; //Stores the depth pixel values. Use this as it only stores 1 value for each pixel so faster processing.
+	newPoints.first = pixel{ 0,0,0 }; //The first of the closest 2 pixels
+	newPoints.second = pixel{ 0,0,0 }; //The second of the closest 2 pixels
+	prevPoints.first = pixel{ 0,0,0 }; //The previous first closest pixel
+	prevPoints.second = pixel{ 0,0,0 }; //The previous second closest pixel
+	refreshFrame = 0;
+	vid = VideoWriter("handsOutput1.avi", CV_FOURCC('M', 'P', '4', '2'), 15.0, Size(cDepthWidth, cDepthHeight), 1);
+	doVid = false;
 }
   
 
@@ -83,7 +89,7 @@ CDepthBasics::~CDepthBasics()
     {
         m_pKinectSensor->Close();
     }
-
+	
     SafeRelease(m_pKinectSensor);
 }
 
@@ -96,7 +102,7 @@ int CDepthBasics::Run(HINSTANCE hInstance, int nCmdShow)
 {
 	namedWindow("window1", WINDOW_AUTOSIZE);
 	InitializeDefaultSensor();
-
+	
     // Main message loop
     while (run == 0)
     {
@@ -127,7 +133,7 @@ void CDepthBasics::Update()
         int nWidth = 0;
         int nHeight = 0;
         USHORT nDepthMinReliableDistance = 0;
-        USHORT nDepthMaxDistance = 0;
+        USHORT nDepthMaxDistance = 1000;
         UINT nBufferSize = 0;
         UINT16 *pBuffer = NULL;
 
@@ -280,14 +286,193 @@ void CDepthBasics::ProcessDepth(INT64 nTime, const UINT16* pBuffer, int nWidth, 
 void CDepthBasics::Draw()
 {
 	imgD = Mat(Size(cDepthWidth, cDepthHeight), CV_8UC1, depthArr); //Must be CV_8UC1 because 1 colour channel
-	imgG = Mat(Size(cDepthWidth, cDepthHeight), CV_8UC1); //The matrix to be gaussian blurred
+	//imgG = Mat(Size(cDepthWidth, cDepthHeight), CV_8UC1); //The matrix to be gaussian blurred
 	GaussianBlur(imgD, imgG, Size(45, 45), 100); //65,65,150 are the current default blur parameters
 	//GaussianBlur(imgG, imgG, Size(1, 45), 100); //65,65,150 are the current default blur parameters
 
+	cvtColor(imgD, imgD, COLOR_GRAY2RGB);
+	cvtColor(imgG, imgG, COLOR_GRAY2RGB);
+
+	int checkSize = 60; //The size of the area around the current center of the hand which will be checked for the next best pixel 
+						//Still not sure of best size. Small medium and large seem to all have separate benefits. 120 actually works quite well.
+
+	double multiplier = 1;
+
+	if (refreshFrame == 0)
+	{
+		newPoints = findClosest2(&imgG); //Search the whole image for the closest 2 points as opposed to locally for each
+	}
+	else
+	{
+		multiplier = ((double)prevPoints.first.depth / 255.0)*0.5 + 0.5;
+		newPoints.first = findClosestInRange(&imgG, prevPoints.first, checkSize, 1); //Search locally for the closest pixel around the first current closest
+		multiplier = ((double)prevPoints.second.depth / 255.0)*0.5 + 0.5;
+		newPoints.second = findClosestInRange(&imgG, prevPoints.second, checkSize, 2); //Search around the second
+	}
+	
+	drawBoxes(&imgD, newPoints.first); //Draw the boxes on the output image
+	drawBoxes(&imgD, newPoints.second);
+
+	prevPoints = newPoints; //Make the new points become the previous points, ready for the net frame
+	refreshFrame = ((refreshFrame + 1) % 100) + 1; //Remove the + 1 to enable a global search for the 2 points every 100 frames.
+
 	imshow("window1", imgD);
+	if (doVid)
+	{
+		vid.write(imgD);
+	}
 	int key = waitKey(25);//Number of ms image is displayed for. 1s = 1000ms. Increasing this decreases FPS. Perhaps do this if need to make it run better. 16.666 = 60fps, 25 = 40fps
 	if (key != -1)
 	{
 		run = 1; //Terminate the program
+	}
+}
+
+bool CDepthBasics::inRange(int radius, pixel pix1, pixel pix2)
+{
+	bool isIn = false;
+	double a = (pix1.xpos - pix2.xpos);
+	double b = (pix1.ypos - pix2.ypos);
+	if (sqrt(a*a + b*b) < radius)
+	{
+		isIn = true;
+	}
+
+	return isIn;
+}
+
+pair<pixel, pixel> CDepthBasics::findClosest2(Mat *img) //Find the closest 2 pixels, that are at least a certain distance away from each other
+{
+	pixel closest; //Holds the values of the current closest
+	closest.depth = 0;
+	pixel closest2; //Holds the values of the current second closest
+	closest2.depth = 0;
+	int step = 3; //The jump between pixels
+	pixel testPix; //Holds the pixel currently being looked at
+
+	//find closest pixel
+	for (int c = 0; c < img->cols; c = c + step)
+	{
+		for (int r = 0; r < img->rows; r = r + step)
+		{
+			testPix.xpos = c;
+			testPix.ypos = r;
+			testPix.depth = img->at<Vec3b>(Point(c, r))[0]; //Point(c, r) because if without it does row then column (matrix style) as opposed to coordinate style.
+			if (testPix.depth > closest.depth)
+			{
+				closest.xpos = c;
+				closest.ypos = r;
+				closest.depth = testPix.depth;
+			}
+		}
+	}
+
+	//find second closest pixel, that is out of range of the first one
+	for (int c = 0; c < img->cols; c = c + step)
+	{
+		for (int r = 0; r < img->rows; r = r + step)
+		{
+			testPix.xpos = c;
+			testPix.ypos = r;
+			testPix.depth = img->at<Vec3b>(Point(c, r))[0];
+			if (testPix.depth > closest2.depth && !inRange(75, closest, testPix)) //75 is an arbitrary value
+			{
+				closest2.xpos = c;
+				closest2.ypos = r;
+				closest2.depth = testPix.depth;
+			}
+		}
+	}
+	pair<pixel, pixel> points(closest, closest2);
+	return points; //Return the closest 2 pixels
+}
+
+pixel CDepthBasics::findClosestInRange(Mat *img, pixel currentPix, int radius, int point) //Find the closest pixel within a certain pixel range
+{
+	pixel closest;
+	closest.xpos = currentPix.xpos;
+	closest.ypos = currentPix.ypos;
+	closest.depth = 1;
+	pixel testPix;  //Holds the pixel currently being looked at
+	int step = 3;
+	double multiplier;
+
+	if (point == 1) //The search area differs based on whch point this is. 
+	{
+		multiplier = ((double)prevPoints.first.depth / 255.0)*0.5 + 0.5;
+	}
+	else if (point == 2)
+	{
+		multiplier = ((double)prevPoints.second.depth / 255.0)*0.5 + 0.5;
+	}
+
+	radius = radius*multiplier; //Scale the radius
+
+	int cmin = max(0, currentPix.xpos - radius);
+	int cmax = min(img->cols - 1, currentPix.xpos + radius);
+
+	int rmin = max(0, currentPix.ypos - radius);
+	int rmax = min(img->rows - 1, currentPix.ypos + radius);
+
+	for (int c = cmin; c <= cmax; c = c + step) //Go through columns
+	{
+		for (int r = rmin; r <= rmax; r = r + step) //Go through rows
+		{
+			testPix.xpos = c;
+			testPix.ypos = r;
+			testPix.depth = img->at<Vec3b>(Point(c, r))[0];
+			if (testPix.depth > closest.depth && ( //Find the point with the closest depth
+				(point == 1 && !inRange(50, testPix, prevPoints.second)) //Check that if this is the first point, the test pixel is not the same as the previous second point 
+				|| (point == 2 && !inRange(50, testPix, prevPoints.first)))
+				&& inRange(radius, testPix, currentPix)) //Check that if this is the second point, the test pixel is not the same as the previous first point 
+			{
+				closest.xpos = c;
+				closest.ypos = r;
+				closest.depth = testPix.depth;
+			}
+		}
+	}
+
+	return closest;
+}
+
+void CDepthBasics::drawBoxes(Mat *img, pixel point)
+{
+	//Specify the dimensions of the boxes drawn
+	int centralPointSize = 2;
+	int checkBoxSize = 60;
+	int mainBoxLeft = 120;
+	int mainBoxRight = 120;
+	int mainBoxUp = 150;
+	int mainBoxDown = 70;
+
+	double multiplier = ((double)point.depth / 255.0)*0.5 + 0.5; //The multiplier used to make the box/checking areas around the centre pixel change size as the hand moves deeper
+
+	int x = point.xpos;
+	int y = point.ypos;
+
+	rectangle(*img, Point(x - centralPointSize, y - centralPointSize), Point(x + centralPointSize, y + centralPointSize), Scalar(255, 0, 255), centralPointSize*2); //Draw the centre of the hand
+	rectangle(*img, Point(x - (int)(mainBoxLeft * multiplier), y - (int)(mainBoxUp * multiplier)), Point(x + (int)(mainBoxRight * multiplier), y + (int)(mainBoxDown * multiplier)), Scalar(0, 255, 0), 3); //Draw a box around the area checked between frames
+	rectangle(*img, Point(x - (int)(checkBoxSize * multiplier), y - (int)(checkBoxSize * multiplier)), Point(x + (int)(checkBoxSize * multiplier), y + (int)(checkBoxSize * multiplier)), Scalar(255, 0, 0), 3); //This area is the image that will be used to identify the hand
+
+}
+
+void CDepthBasics::drawPixels(Mat *img, pixel point, int size)
+{
+	int x = point.xpos;
+	int y = point.ypos;
+	for (int k = -size; k < size; k++) //colour that pixel
+	{
+		for (int l = -2; l < 3; l++)
+		{
+			int a = x + k;
+			int b = y + l;
+			if (a >= 0 && b >= 0 && a < img->cols && b < img->rows)
+			{
+				//imgToDrawOn->at<Vec3b>(a, b)[0] = 0;
+				img->at<Vec3b>(Point(a, b))[1] = 0;
+				//imgToDrawOn->at<Vec3b>(a, b)[2] = 255;
+			}
+		}
 	}
 }

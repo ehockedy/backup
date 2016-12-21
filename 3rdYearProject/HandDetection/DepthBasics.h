@@ -11,6 +11,12 @@
 
 #include <opencv2/opencv.hpp>
 
+struct pixel {
+	int xpos;
+	int ypos;
+	int depth;
+};
+
 class CDepthBasics
 {
 	static const int        cDepthWidth = 512;
@@ -52,6 +58,13 @@ private:
 	cv::Mat					imgD;
 	cv::Mat					imgG;
 
+	bool					doVid;
+	cv::VideoWriter			vid;
+
+	std::pair<pixel, pixel> newPoints;
+	std::pair<pixel, pixel> prevPoints;
+	int					    refreshFrame;
+
     /// <summary>
     /// Main processing function
     /// </summary>
@@ -75,5 +88,15 @@ private:
     void                    ProcessDepth(INT64 nTime, const UINT16* pBuffer, int nHeight, int nWidth, USHORT nMinDepth, USHORT nMaxDepth);
 
 	void Draw();
+
+	bool inRange(int radius, pixel pix1, pixel pix2);
+
+	std::pair<pixel, pixel> findClosest2(cv::Mat *img);
+
+	pixel findClosestInRange(cv::Mat *img, pixel currentPix, int radius, int point);
+
+	void drawPixels(cv::Mat* img, pixel point, int size);
+
+	void drawBoxes(cv::Mat* img, pixel point);
 };
 
