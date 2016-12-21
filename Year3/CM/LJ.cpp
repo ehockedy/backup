@@ -18,6 +18,9 @@
 //
 // (C) 2015 Tobias Weinzierl
 
+//MULTIPTHREADING SLOWS IT DOWN FOR 2 PARTICLES AND ALSO GIVES INCORRECT VALUES
+//TO PREVENT INCORRECT VALUES, HAVE n FORCESTORE ARRAYS, ONE FOR EACH OF THE n THREADS, THEN COMBINE THEM AT THE END. THIS IS BECAUSE WHEN MULTIPLE THREADS WRITE TO THE SAME ARRAY, THEY CAN BE WRITING AT THE SAME TIME WHICH CAUSES ERRORS
+
 #include <fstream>
 #include <sstream>
 #include <math.h>
@@ -27,27 +30,34 @@
 
 using namespace std;
 
-const int questionNum = 2; 
-const int numParticles = 2;
+string questionNum = "21"; 
+int numParticles = 2;
 
-double particlePositions[numParticles][3]; //Holds the positions of the particles
-double particleVelocities[numParticles][3]; 
+double (*particlePositions)[3];//[numParticles][3]; //Holds the positions of the particles
+double (*particleVelocities)[3];//[numParticles][3]; 
 
-double forceStore[numParticles][3]; //Holds the current calculated forces. Ths prevents calculating the same force twice.
+double (*forceStore)[3]; //Holds the current calculated forces. Ths prevents calculating the same force twice.
 
 double s = pow(10, -5);//pow(3.405, -10);
 double a = pow(10, -5);//pow(1.654, -21);
 
-double timeStepSize = 1e6;//0.0000001;
+double timeStepSize = 1e6;//1e6;//0.0000001;
 
 bool closest = false;
 bool first = true; //TESTING
+bool nanTest = false;
 
 double trackDist = 0.2;
 
 double maxVelocity = 0;
 
-double minDist = 1.0;
+double minDist = 5.0;
+double overallMinTest = 5.0;
+int minP1;
+int minP2;
+
+int distCounter = 0;
+int distCounter2 = 0;
 
 double distOfParticles = 1;// 1.122 * s; //1.122 from 1st paragraph of https://en.wikipedia.org/wiki/Lennard-Jones_potential
 
@@ -56,16 +66,18 @@ double randPos() //from http://stackoverflow.com/questions/6218399/how-to-genera
     return (double)rand() / (double)RAND_MAX; //Generates a random number between -1 and 1 exclusive, then scale to particle distances
 }
 
-void setUp(int q) {
+void setUp(string q) {
 	srand(1); //Set the seed so can reproduce results.
 	
-	if(q == 1)
+	if(q == "1" || q == "2")
 	{//Position
 		for(int p = 0; p < numParticles ; p++) //For each particle
 		{
 			particlePositions[p][0] = randPos(); //Generate a random x position.
 			particlePositions[p][1] = randPos(); //Generate a random y position.
 			particlePositions[p][2] = randPos(); //Generate a random z position.
+			
+			//cout << "p=" << p << " x: " << particlePositions[p][0] << " y: " << particlePositions[p][1] << " z: " << particlePositions[p][2] << endl;
 			
 			particleVelocities[p][0] = 0.0;//randPos(); //Generate a random x Velocity.
 			particleVelocities[p][1] = 0.0;//randPos(); //Generate a random y Velocity.
@@ -76,12 +88,35 @@ void setUp(int q) {
 			forceStore[p][2] = 0.0;
 		}
 	}
-	else if(q == 2)
+	else if(q == "21")
 	{
-		particlePositions[0][0] = 0.1; //Generate a random x position.
+		particlePositions[0][0] = 0.4; //Generate a random x position.
 		particlePositions[0][1] = 0.5; //Generate a random y position.
 		particlePositions[0][2] = 0.5;
-		particlePositions[1][0] = 0.9; //Generate a random x position.
+		particlePositions[1][0] = 0.6; //Generate a random x position.
+		particlePositions[1][1] = 0.5; //Generate a random y position.
+		particlePositions[1][2] = 0.5;
+		
+		particleVelocities[0][0] = 0.0;
+		particleVelocities[0][1] = 0.0;
+		particleVelocities[0][2] = 0.0;
+		particleVelocities[1][0] = 0.0;
+		particleVelocities[1][1] = 0.0;
+		particleVelocities[1][2] = 0.0;
+		
+		forceStore[0][0] = 0.0;
+		forceStore[0][1] = 0.0;
+		forceStore[0][2] = 0.0;
+		forceStore[1][0] = 0.0;
+		forceStore[1][1] = 0.0;
+		forceStore[1][2] = 0.0;
+	}
+	else if(q == "22")
+	{
+		particlePositions[0][0] = 0.15; //Generate a random x position.
+		particlePositions[0][1] = 0.5; //Generate a random y position.
+		particlePositions[0][2] = 0.5;
+		particlePositions[1][0] = 0.95; //Generate a random x position.
 		particlePositions[1][1] = 0.5; //Generate a random y position.
 		particlePositions[1][2] = 0.5;
 		
@@ -117,7 +152,7 @@ void printCSVFile(double counter) {
   }
 }
 
-void updateBody(int t, int q)
+void updateBody(int t, string q)
 {
 	//cout << particlePositions[0][0] << " efwefefef " << endl;
     //double force[3];
@@ -156,47 +191,37 @@ void updateBody(int t, int q)
 	}
     double distTest = 0;
 	double distTest2 = 0;
+	
+	double minDistTest = 1;
     //force and velocity
-	#pragma opm parallel for
-	{
+	//#pragma omp parallel for
     for(int i=0; i<numParticles; i++){ //For each particle
-        /*force[0] = 0.0; //Force in each direction
-        force[1] = 0.0;
-        force[2] = 0.0;
+	
+        for(int j=i+1; j<numParticles; j++){ //For each particle. j = i + 1 as don't need to do cach calculation twice (e.g. for particle 1 and 2 then 2 and 1, just do both in one go.)
+            //const 
 		
-		#pragma opm parallel for
-		{
-		
-        for(int j=0; j<numParticles; j++){ //For each particle. j = i + 1 as don't need to do cach calculation twice (e.g. for particle 1 and 2 then 2 and 1, just do both in one go.)
-            if(i == j) continue; //If it is not the same particle. continue skips rest of current iteration if condition is true
-            const double distance = sqrt( //Calculate the absolute distance between the particles
-			(particlePositions[i][0]-particlePositions[j][0]) * (particlePositions[i][0]-particlePositions[j][0]) +
-            (particlePositions[i][1]-particlePositions[j][1]) * (particlePositions[i][1]-particlePositions[j][1]) +
-            (particlePositions[i][2]-particlePositions[j][2]) * (particlePositions[i][2]-particlePositions[j][2])
-            );
-			//printf("DIST: %lf\n", distance);
-            double rx = (particlePositions[i][0]-particlePositions[j][0]); //Proportion of force in the x direction
+			double rx = (particlePositions[i][0]-particlePositions[j][0]); //Proportion of force in the x direction
 			double ry = (particlePositions[i][1]-particlePositions[j][1]);  //j - i because it is the force the other particle exerts on this particle
 			double rz = (particlePositions[i][2]-particlePositions[j][2]); 
+			distCounter2++;
+			const double distance = sqrt(rx*rx + ry*ry + rz*rz);
 			
-            force[0] += 4 * a * (12 * (pow(s, 12)/pow(distance, 13)) - 6 * pow(s, 6)/pow(distance, 7)) * (rx/distance); //Calculate force in the x direction and update the overall force on the particle in theis direction. Overall since being forced by every particle
-            force[1] += 4 * a * (12 * (pow(s, 12)/pow(distance, 13)) - 6 * pow(s, 6)/pow(distance, 7)) * (ry/distance); //Force in y dir
-            force[2] += 4 * a * (12 * (pow(s, 12)/pow(distance, 13)) - 6 * pow(s, 6)/pow(distance, 7)) * (rz/distance); //Force in z dir
-		}
-		
-		} //END PRAGMA*/
-		
-		
-		
-		//#pragma opm parallel for
+			//GET RID OF IT
+			//NOOOOOOOOOOOOOOWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+			//if(distance < 0.2)//GET RID OF THIS_____________________________________________________________________________________________
 		//{
-		
-        for(int j=i+1; j<numParticles; j++){ //For each particle. j = i + 1 as don't need to do cach calculation twice (e.g. for particle 1 and 2 then 2 and 1, just do both in one go.)
-            const double distance = sqrt( //Calculate the absolute distance between the particles
+			distCounter++;
+			/*if(distance < 0.2) 
+			{
+				continue;
+				//cout << distance << endl;
+			}*/
+			//numPdone++;
+			/*const double distance = sqrt( //Calculate the absolute distance between the particles
 			(particlePositions[i][0]-particlePositions[j][0]) * (particlePositions[i][0]-particlePositions[j][0]) +
             (particlePositions[i][1]-particlePositions[j][1]) * (particlePositions[i][1]-particlePositions[j][1]) +
             (particlePositions[i][2]-particlePositions[j][2]) * (particlePositions[i][2]-particlePositions[j][2])
-            );
+            );*/
 			
 			/*if(distance < minDist)
 			{
@@ -206,19 +231,64 @@ void updateBody(int t, int q)
 			{*/
 			distTest = distance;
 			
+			/*if(distance > 1)
+			{
+				cout << "BIGGER THAN 1 " << i << " " << j << " d: " << distance<< endl; 
+			}*/
+			
 			//trackDist = distance;
 				//cout << "mindist: " << minDist << "  distance: " << distance << " time " << t << endl;
 			//}
 			
-            double rx = (particlePositions[i][0]-particlePositions[j][0]); //Proportion of force in the x direction
+            /*double rx = (particlePositions[i][0]-particlePositions[j][0]); //Proportion of force in the x direction
 			double ry = (particlePositions[i][1]-particlePositions[j][1]);  //j - i because it is the force the other particle exerts on this particle
-			double rz = (particlePositions[i][2]-particlePositions[j][2]); 
+			double rz = (particlePositions[i][2]-particlePositions[j][2]); */
 			
 			double f = 4 * a * (12 * (pow(s, 12)/pow(distance, 13)) - 6 * pow(s, 6)/pow(distance, 7));
 			
-			double fx = f * (rx/distance);
-			double fy = f * (ry/distance);
-			double fz = f * (rz/distance);
+			double fx;
+			double fy;
+			double fz;
+			
+			/*if(rx == 0)
+			{   
+				rx = 0;
+			}
+			
+			
+			if(ry == 0)
+			{
+				ry = 0;
+			}
+			if(rz == 0)
+			{
+				rz = 0;
+			}*/
+			
+			if(distance < minDistTest)
+			{
+				minDistTest = distance;
+				//cout << "mdt: " << minDistTest << " i: " << i << " j: " << j << endl;
+			}
+						
+			if(distance == 1)
+			{
+				cout << "1111111111111" << endl;
+				cout << "i: " << i << "  x: " << particlePositions[i][0] << " y: " << particlePositions[i][1] << " z: " << particlePositions[i][2] << endl;
+				cout << "j: " << j << "  x: " << particlePositions[j][0] << " y: " << particlePositions[j][1] << " z: " << particlePositions[j][2] << endl;
+				cout << "t: " << t << endl << endl;
+			}
+			if(distance == 0)
+			{
+				cout << "0000000000000" << endl;
+				cout << "i: " << i << "  x: " << particlePositions[i][0] << " y: " << particlePositions[i][1] << " z: " << particlePositions[i][2] << endl;
+				cout << "j: " << j << "  x: " << particlePositions[j][0] << " y: " << particlePositions[j][1] << " z: " << particlePositions[j][2] << endl;
+				cout << "t: " << t << endl << endl;
+			}
+			
+			fx = f * (rx/distance);
+			fy = f * (ry/distance);
+			fz = f * (rz/distance);
 			
             forceStore[i][0] += fx; //Calculate force in the x direction and update the overall force on the particle in this direction. Overall since being forced by every particle
             forceStore[i][1] += fy; //Force in y dir
@@ -228,14 +298,36 @@ void updateBody(int t, int q)
             forceStore[j][1] -= fy; //Force in y dir
             forceStore[j][2] -= fz;//Force in z dir
 			
-			//cout << distance << "    " << (rx/distance) << "    " << (ry/distance) << "     " << (rz/distance) << endl;
+			/*if(t == 800000)
+			{
+				cout << "i: " << i << " j: " << j << " dist: " << distance << " rx/d " << (rx/distance) << " ry/d " << (ry/distance) << " rz/d " << (rz/distance) << endl;
+			}*/
+			if((particlePositions[i][0] == 0 || particlePositions[j][0] == 0 || particlePositions[i][1] == 0 || particlePositions[j][1] == 0) && nanTest == false)
+			{
+				nanTest = true;
+				cout << "000000 " << endl;
+				cout << "i: " << i << "  x: " << particlePositions[i][0] << " y: " << particlePositions[i][1] << " z: " << particlePositions[i][2] << endl;
+				cout << "j: " << j << "  x: " << particlePositions[j][0] << " y: " << particlePositions[j][1] << " z: " << particlePositions[j][2] << endl;
+				cout << "t: " << t << " i: " << i << " j: " << j << " d: " << distance << " rx: " << rx << " ry: " << ry << " rz: " << rz << " f: " << f << endl << endl;
+			}
 			
+			/*if((t > 967 && t <= 970) &&((i==0 &&j==1) ||(i == 4 && j == 6) || (i==4 && j==7) || (i==6 && j==7)))
+			{
+				cout << "i: " << i << " x: " << particlePositions[i][0] << " y: " << particlePositions[i][1] << " z: " << particlePositions[i][2] << endl;
+				cout << "j: " << j << " x: " << particlePositions[j][0] << " y: " << particlePositions[j][1] << " z: " << particlePositions[j][2] << endl;
+				cout << "t: " << t << " i: " << i << " j: " << j << " d: " << distance << " rx: " << rx << " ry: " << ry << " rz: " << rz << " f: " << f << endl << endl;
+			}*/
+			if(!(distance == distance) && nanTest == false)
+			{
+				cout << "NAN t: " << t << " d: " << distance << endl;
+				nanTest = true;
+			}
 			//Wrap around distances
 			//cout << distance << endl;
 			//if(t<3){cout << "Dist: " << distance << endl;}
-			double altDistance = fmod(1.0 - distance, 1.0); //do fmod incase distance is 0 (even though it never is)
+			//double altDistance = fmod(1.0 - distance, 1.0); //do fmod incase distance is 0 (even though it never is)
 			
-			distTest2 = altDistance;
+			
 			
 			//double altDistance = 1-distance;
 			//cout << altDistance;
@@ -248,8 +340,13 @@ void updateBody(int t, int q)
 				cout << "1: " << (1 - fabs(ry)) << "   " << (ry/fabs(ry)) << endl;//"re: " << rx << "fabs" << 1- fabs(rx) << endl;
 			}*/
 			if(rx != 0)
-			{
+			{   // other dir * mag  * current dir
+				/*if(-1 * (1 - fabs(rx)) * (rx/fabs(rx)) + rx != 0)
+				{
+					cout << "t: " << t << " rx: " << rx << " rx2: " << -1 * (1 - fabs(rx)) * (rx/fabs(rx)) << endl;
+				}*/
 				rx = -1 * (1 - fabs(rx)) * (rx/fabs(rx));//1-rx;//-1*rx; //
+				
 			}
 			else
 			{
@@ -267,12 +364,22 @@ void updateBody(int t, int q)
 			
 			if(rz != 0)
 			{
-				rz = -1 * (1 - fabs(rz)) * (rx/fabs(rz));//1-rx;//-1*rx; //
+				rz = -1 * (1 - fabs(rz)) * (rz/fabs(rz));//1-rx;//-1*rx; //
 			}
 			else
 			{
 				rz = 0;
 			}
+			
+			const double altDistance = sqrt(rx*rx + ry*ry + rz*rz);
+			
+			if(altDistance < minDistTest)
+			{
+				minDistTest = altDistance;
+				//cout << "mdtALT: " << minDistTest << " i: " << i << " j: " << j << endl;
+			}
+			
+			distTest2 = altDistance;
 			
 			//ry = -1 * (1 - fabs(ry)) * (ry/fabs(ry));//1-ry;//1 - ry;//-1*ry; //
 			//rz = -1 * (1 - fabs(rz)) * (ry/fabs(rz));//1-rz;//(1 - fabs(rz)) * (rz/fabs(rz));//1 - rz;//-1*rz; //
@@ -285,6 +392,19 @@ void updateBody(int t, int q)
 			/*if(t < 3)
 			{
 				cout << "AD: " << altDistance << endl;//"re: " << rx << "fabs" << 1- fabs(rx) << endl;
+			}*/
+			
+			/*if(distance != 0) //WILL NEED TO CHANGE FOR ALL 3 DIRS
+			{
+				rx = -1*fabs(1-rx);
+				ry = -1*fabs(1-ry);
+				rz = -1*fabs(1-rz);
+			}
+			else
+			{
+				rx = 0;
+				ry = 0;
+				rz = 0;
 			}*/
 			
 			double f2 = 4 * a * (12 * (pow(s, 12)/pow(altDistance, 13)) - 6 * pow(s, 6)/pow(altDistance, 7));
@@ -324,6 +444,46 @@ void updateBody(int t, int q)
 			{
 				cout << "FORCES SAME  i=" << i << "  j=" << j << "  t=" << t << endl; 
 			}*/
+			if(minDistTest < overallMinTest)
+			{
+				overallMinTest = minDistTest;
+				minP1 = i;
+				minP2 = j;
+			}
+		//}
+		}
+		
+		/*if(t < 3 && numPdone > 0)
+		{	
+			cout << i  << " " << numPdone << endl;
+		}*/
+		
+		if(q == "1" || q == "2")
+		{
+			if(minDistTest < 0.00001)
+			{
+				timeStepSize = 1e-5;
+			}
+			else if(minDistTest < 0.0001)
+			{
+				timeStepSize = 1e-3;
+			}
+			else if(minDistTest < 0.001)
+			{
+				timeStepSize = 1;
+			}
+			else if(minDistTest < 0.01)
+			{
+				timeStepSize = 1e3;
+			}
+			else if(minDistTest < 0.1)
+			{
+				timeStepSize = 1e5;
+			}
+			else
+			{
+				timeStepSize = 1e7;
+			}
 		}
 		
 		
@@ -341,6 +501,19 @@ void updateBody(int t, int q)
         particleVelocities[i][1] = particleVelocities[i][1] + timeStepSize * forceStore[i][1]; 
         particleVelocities[i][2] = particleVelocities[i][2] + timeStepSize * forceStore[i][2];
 		
+		/*if(particleVelocities[i][0] >= 1000)
+		{
+			cout << i << " v: " << particleVelocities[i][0] << " t: " << t << endl;
+		}
+		if(particleVelocities[i][1] >= 1000)
+		{
+			cout << i << " v: " << particleVelocities[i][1] << " t: " << t << endl;
+		}
+		if(particleVelocities[i][2] >= 1000)
+		{
+			cout << i << " v: " << particleVelocities[i][2] << " t: " << t << endl;
+		}*/
+		
 		/*if(t < 2)
 		{
 			cout << "INLOOPv1: " << particleVelocities[0][0] << endl;
@@ -350,20 +523,42 @@ void updateBody(int t, int q)
 			//cout << (particlePositions[0][2] - particlePositions[1][2]) << endl;
 		}*/
     }
-	}//end pragma
-	
-	if(distTest < trackDist*0.75)
+	//end pragma
+	if(q == "21" || q == "22")
+	{
+		/*if((distTest < 1.2e-5 || distTest2 < 1.2e-5) && timeStepSize > 0.00005)
+		//This doesnt always make it better. For example, on the 0.4 and 0.6, it makes it worse. This is presumably because the smaller time step gets the particles even closer so the force is greater, whereas without this the particles still get close such that the force is repulsive, but not so close so that they continuously move away from each other.
+		//If the positions are changed to 0.95 and 0.15, it works without it too. 
+		//For 0.1 and 0.9, without this they bounce rapidly between 0 and 0.5 and 1 and 0.5, with it they slowly move away from each other.
+		//So how the particles interact at very small distances is very dependent on the time step size.
+		{
+			timeStepSize = 0.000001;
+			cout << "NORM t: " << t << " d: " << distTest << " v: " << particleVelocities[0][0] << " s: " << timeStepSize << endl;
+
+		}*/
+		//else 
+		if(timeStepSize > 0.00005) //0.00005 is the smallest we want to go
+		{
+			if(distTest < trackDist*0.75)
+			{
+				timeStepSize = timeStepSize/2;
+				trackDist = distTest;
+				cout << "NORM t: " << t << " d: " << distTest << " v: " << particleVelocities[0][0] << " s: " << timeStepSize << endl;
+			}
+			else if(distTest2 < trackDist*0.75)
+			{
+				timeStepSize = timeStepSize/2;
+				trackDist = distTest2;
+				cout << "WRAP t: " << t << " d: " << distTest2 << " v: " << particleVelocities[0][0] << " s: " << timeStepSize << endl;
+			}
+		}
+	}
+	/*if(distTest2 < trackDist2*0.75)
 	{
 		timeStepSize = timeStepSize/2;
-		trackDist = distTest;
+		trackDist2 = distTest2;
 		cout << "time: " << t << " distance: " << distTest << " time: " << t << " velocity: " << particleVelocities[0][0] << "step: " << timeStepSize << endl;
-	}
-	else if(distTest2 < trackDist*0.75)
-	{
-		timeStepSize = timeStepSize/2;
-		trackDist = distTest2;
-		cout << "time: " << t << " distance: " << distTest << " time: " << t << " velocity: " << particleVelocities[0][0] << "step: " << timeStepSize << endl;
-	}
+	}*/
 	
 	//bool doneThisRound = false;
 	/*for (int i = 0; i < numParticles; i++)
@@ -494,8 +689,7 @@ void updateBody(int t, int q)
 	}*/	
 	
 	//Put pragma out here, 
-	#pragma opm parallel for
-	{
+	//#pragma omp parallel for
     for(int i=0; i<numParticles; i++){ //Update positions of all particles 
 		//#pragma opm parallel for
 		//{
@@ -515,16 +709,44 @@ void updateBody(int t, int q)
 			{
 				cout << "i = " << i << ", n =" << n << endl << "t = " << t << ": particlePosition = " << particlePositions[i][n] << endl; 
 			}*/
-			if(updatedPos >= distOfParticles)
+			if(updatedPos >= 1) //Could be something to do with whether 1 is inclusive or not as to why 0.4/0.6 and 0.1/0.9 differ
 			{
+				
+				//cout << "uP: " << updatedPos << endl << "f(uP): " << floor(updatedPos) << endl << "uP - f(uP): " << updatedPos - floor(updatedPos) << endl << " t: " << t << endl << endl;
 				updatedPos = updatedPos - floor(updatedPos);
+				
 				//cout << "1" << endl;
 			}
 			else if(updatedPos < 0)
 			{
-				updatedPos = 1 - (fabs(updatedPos) - floor(fabs(updatedPos)));
+				if(fabs(updatedPos) - floor(fabs(updatedPos)) == 0)
+				{
+					updatedPos = 0;
+				}
+				else
+				{
+					updatedPos = 1 - (fabs(updatedPos) - floor(fabs(updatedPos)));
+				}
+				/*if((1 - (fabs(updatedPos) - floor(fabs(updatedPos))) == 1))
+				{
+					cout << t << " fyjfluyboyfobyfobyfobyfob fabs-floor: " <<fabs(updatedPos) - floor(fabs(updatedPos)) << endl;
+				}*/
+				//updatedPos = 1 - (fabs(updatedPos) - floor(fabs(updatedPos)));
 				//cout << "2" << endl;
 			}
+			if(updatedPos == 1)
+			{
+				cout << "HEFHEOHUHEUH" << endl;
+			}
+			/*if(updatedPos == 0)
+			{
+				cout << "0:" << endl << "uP: " << updatedPos << endl << "f(uP): " << floor(updatedPos) << endl << "uP - f(uP): " << updatedPos - floor(updatedPos) << endl << " t: " << t << endl << endl;
+			}*/
+			/*if(updatedPos == 1)
+			{
+				cout << "jkggggyigygg1:" << endl << "uP: " << updatedPos << endl << "f(uP): " << floor(updatedPos) << endl << "uP - f(uP): " << updatedPos - floor(updatedPos) << endl << " t: " << t << endl << endl;
+			}*/
+			
 			/*if((t == 10200 || t == 10300 || t == 10400) && i == 2)
 			{
 				cout << "t = " << t << ": updatedPos = " << updatedPos << endl;
@@ -545,7 +767,7 @@ void updateBody(int t, int q)
         particlePositions[i][2] = fmod(fabs(updatedPosz), distOfParticles) * updatedPosz/fabs(updatedPosz); 
 		*/
 	}
-	}//end pragma
+	//end pragma
 	
 	
 	/*if(t > 100 && t < 120)
@@ -582,21 +804,42 @@ ss: 1.95e-10, v=0.00107
 
 int main(int argc, char *argv[]) {
 	//cout << fmod(0.9123,1) << "  " << fmod(1.0,1.0);
+	//cout << argv[1] << "   " << atoi(argv[2]);
+	questionNum = argv[1]; //THE QUESTION NUMBER. OPTIONS ARE: 1, 2, 21, 22
+	numParticles = atoi(argv[2]);
+	if(questionNum == "21" || questionNum == "22"){numParticles = 2;} //Make sure only have 2 particles for q2 parts 1 and 2 
+	particlePositions = new double[numParticles][3];
+	particleVelocities = new double[numParticles][3];
+	forceStore = new double[numParticles][3];
   setUp(questionNum);
   printCSVFile(0);
   cout.precision(10);
-  const double timeSteps = 1600000000;//5e10;//30000;
-  double plotEveryKthStep = 4000000;//1e6;//100;
+  const double timeSteps = 100000000;//5e10;//30000;
+  double plotEveryKthStep = 100;//1e6;//100;
   for (double i=0; i<timeSteps; i++) { //2145000000
     updateBody(i, questionNum);
 	if(fmod(i,plotEveryKthStep) == 0)
 	{
-		cout << "i: " << i << "   pos: " << particlePositions[0][0] << endl;
+		for(int p = 0; p < numParticles ; p++)
+		{
+			cout << "p=" << p << " x: " << particlePositions[p][0] << " y: " << particlePositions[p][1] << " z: " << particlePositions[p][2] << endl;
+		}
+		cout << "i: " << i << endl;
+		cout << "minDist: " << overallMinTest << " p1: " << minP1 << " p2: " << minP2 << endl;
+		cout << "num times dist < 0.2: " << distCounter << endl;
+		cout << "num times particles compared: " << distCounter2 << endl;
+		overallMinTest = 5.0;
+		cout << "timeStepSize: " << timeStepSize;
+		cout << endl;
+		cout << endl;
 		//cout << i/plotEveryKthStep+1 << " of " << timeSteps/plotEveryKthStep <<  endl;
 		printCSVFile(i/plotEveryKthStep+1); // Please switch off all IO if you do performance tests.
 	}
-
+	distCounter = 0;
+	distCounter2 = 0;
   }
+  delete [] particlePositions;
+  delete [] particleVelocities;
 
   return 0;
 }
