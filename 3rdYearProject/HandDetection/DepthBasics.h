@@ -95,8 +95,15 @@ private:
 
 	pixel findClosestInRange(cv::Mat *img, pixel currentPix, int radius, int point);
 
+	cv::Mat getHandArea(cv::Mat img, pixel point);
+
 	void drawPixels(cv::Mat* img, pixel point, int size);
 
 	void drawBoxes(cv::Mat* img, pixel point);
+
+	std::vector<cv::Point> getHull(cv::Mat img, pixel point, cv::Mat *imgD);
+
+	//void drawHandOutline(cv::Mat *imgDraw, cv:: Mat *imgEdit);
 };
+
 

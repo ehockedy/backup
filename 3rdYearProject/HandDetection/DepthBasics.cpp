@@ -289,7 +289,7 @@ void CDepthBasics::Draw()
 	//imgG = Mat(Size(cDepthWidth, cDepthHeight), CV_8UC1); //The matrix to be gaussian blurred
 	GaussianBlur(imgD, imgG, Size(45, 45), 100); //65,65,150 are the current default blur parameters
 	//GaussianBlur(imgG, imgG, Size(1, 45), 100); //65,65,150 are the current default blur parameters
-
+	Mat outline = imgD.clone();
 	cvtColor(imgD, imgD, COLOR_GRAY2RGB);
 	cvtColor(imgG, imgG, COLOR_GRAY2RGB);
 
@@ -309,9 +309,29 @@ void CDepthBasics::Draw()
 		multiplier = ((double)prevPoints.second.depth / 255.0)*0.5 + 0.5;
 		newPoints.second = findClosestInRange(&imgG, prevPoints.second, checkSize, 2); //Search around the second
 	}
-	
-	drawBoxes(&imgD, newPoints.first); //Draw the boxes on the output image
-	drawBoxes(&imgD, newPoints.second);
+
+	Mat hand1 = getHandArea(imgD, newPoints.first);
+	Mat hand2 = getHandArea(imgD, newPoints.second);
+	//cvtColor(hand1, hand1, COLOR_RGB2GRAY);
+	//drawHandOutline(&imgD, &hand1);
+
+
+	vector<Point> convexHull = getHull(hand1, newPoints.first, &imgD);
+	for (int i = 0; i< convexHull.size(); i++)
+	{
+		Scalar color = Scalar(255, 255, 0);
+		circle(imgD, convexHull[i], 3, Scalar(0, 0, 255));// , 1, 8, vector<Vec4i>(), 0, Point());
+	}
+
+	vector<Point> convexHull2 = getHull(hand2, newPoints.second, &imgD);
+	for (int i = 0; i< convexHull2.size(); i++)
+	{
+		Scalar color = Scalar(255, 0, 255);
+		circle(imgD, convexHull2[i], 3, Scalar(255, 0, 255));// , 1, 8, vector<Vec4i>(), 0, Point());
+	}
+
+	//drawBoxes(&imgD, newPoints.first); //Draw the boxes on the output image
+	//drawBoxes(&imgD, newPoints.second);
 
 	prevPoints = newPoints; //Make the new points become the previous points, ready for the net frame
 	refreshFrame = ((refreshFrame + 1) % 100) + 1; //Remove the + 1 to enable a global search for the 2 points every 100 frames.
@@ -394,7 +414,7 @@ pixel CDepthBasics::findClosestInRange(Mat *img, pixel currentPix, int radius, i
 	closest.ypos = currentPix.ypos;
 	closest.depth = 1;
 	pixel testPix;  //Holds the pixel currently being looked at
-	int step = 3;
+	int step = 1;
 	double multiplier;
 
 	if (point == 1) //The search area differs based on whch point this is. 
@@ -436,24 +456,51 @@ pixel CDepthBasics::findClosestInRange(Mat *img, pixel currentPix, int radius, i
 	return closest;
 }
 
+Mat CDepthBasics::getHandArea(Mat img, pixel point)
+{
+	double mult = ((double)point.depth / 255.0)*0.5 + 0.5; //The multiplier used to make the box/checking areas around the centre pixel change size as the hand moves deeper
+
+	int sideDist = (int)(120 * mult);
+	int upDist = (int)(150 * mult);
+	int downDist = (int)(70 * mult);
+
+	int xcoor1 = max(point.xpos - sideDist, 0);
+	int ycoor1 = max(point.ypos - upDist, 0);
+	int xcoor2 = min(point.xpos + sideDist, img.cols-1);
+	int ycoor2 = min(point.ypos + downDist, img.rows-1);
+
+	Mat smallMat;
+	img(Rect(Point(xcoor1, ycoor1), Point(xcoor2, ycoor2))).copyTo(smallMat);
+	/*PRINT(xcoor1);
+	PRINT("  ");
+	PRINT(ycoor1);
+	PRINT("  ");
+	PRINT(xcoor2);
+	PRINT("  ");
+	PRINT(ycoor2);
+	PRINT("  \n");*/
+	//rectangle(imgD, Point(xcoor1, ycoor1), Point(xcoor2, ycoor2), Scalar(255, 255, 0), 3); 
+	return smallMat;
+}
+
 void CDepthBasics::drawBoxes(Mat *img, pixel point)
 {
+	double multiplier = ((double)point.depth / 255.0)*0.5 + 0.5; //The multiplier used to make the box/checking areas around the centre pixel change size as the hand moves deeper
+
 	//Specify the dimensions of the boxes drawn
 	int centralPointSize = 2;
-	int checkBoxSize = 60;
-	int mainBoxLeft = 120;
-	int mainBoxRight = 120;
-	int mainBoxUp = 150;
-	int mainBoxDown = 70;
-
-	double multiplier = ((double)point.depth / 255.0)*0.5 + 0.5; //The multiplier used to make the box/checking areas around the centre pixel change size as the hand moves deeper
+	int checkBoxSize = (int)(60 * multiplier);
+	int mainBoxLeft = (int)(120 * multiplier);
+	int mainBoxRight = (int)(120 * multiplier);
+	int mainBoxUp = (int)(150 * multiplier);
+	int mainBoxDown = (int)(70 * multiplier);
 
 	int x = point.xpos;
 	int y = point.ypos;
 
 	rectangle(*img, Point(x - centralPointSize, y - centralPointSize), Point(x + centralPointSize, y + centralPointSize), Scalar(255, 0, 255), centralPointSize*2); //Draw the centre of the hand
-	rectangle(*img, Point(x - (int)(mainBoxLeft * multiplier), y - (int)(mainBoxUp * multiplier)), Point(x + (int)(mainBoxRight * multiplier), y + (int)(mainBoxDown * multiplier)), Scalar(0, 255, 0), 3); //Draw a box around the area checked between frames
-	rectangle(*img, Point(x - (int)(checkBoxSize * multiplier), y - (int)(checkBoxSize * multiplier)), Point(x + (int)(checkBoxSize * multiplier), y + (int)(checkBoxSize * multiplier)), Scalar(255, 0, 0), 3); //This area is the image that will be used to identify the hand
+	rectangle(*img, Point(x - mainBoxLeft, y - mainBoxUp), Point(x + mainBoxRight, y + mainBoxDown), Scalar(0, 255, 0), 3); //Draw a box around the area checked between frames
+	rectangle(*img, Point(x - checkBoxSize, y - checkBoxSize), Point(x + checkBoxSize, y + checkBoxSize), Scalar(255, 0, 0), 3); //This area is the image that will be used to identify the hand
 
 }
 
@@ -475,4 +522,45 @@ void CDepthBasics::drawPixels(Mat *img, pixel point, int size)
 			}
 		}
 	}
+}
+
+vector<Point> CDepthBasics::getHull(Mat img, pixel p, Mat *imgDraw)
+{
+	double mult = ((double)p.depth / 255.0)*0.5 + 0.5;
+	Mat outImg = img.clone();
+	cvtColor(outImg, outImg, COLOR_RGB2GRAY);
+	vector<vector<Point> > contours;
+	vector<Vec4i> hierarchy;
+	/*PRINT(p.xpos);
+	PRINT("\n");
+	PRINT(p.ypos);
+	PRINT("\n");
+	PRINT(imgDraw->at<Vec3b>(Point(p.xpos, p.ypos))[0]);
+	PRINT("\n");
+	PRINT("\n");*/
+	int thresh = 100;// p.depth + 50;// imgDraw->at<Vec3b>(Point(p.xpos, p.ypos))[0] + 50;
+	threshold(outImg, outImg, thresh, 255, THRESH_BINARY);
+	/// Find contours
+	int xoffset = max(0, p.xpos - (int)(120 * mult));
+	int yoffset = max(0, p.ypos - (int)(150 * mult));
+	findContours(outImg, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(xoffset, yoffset));
+	
+	int maxi = 0;
+	int maxiSize = 0;
+	for (int i = 0; i < contours.size(); i++)
+	{
+		if (contours[i].size() > maxiSize)
+		{
+			maxi = i;
+			maxiSize = contours[i].size();
+		}
+	}
+
+	vector<Point> hull(maxiSize);
+	convexHull(Mat(contours[maxi]), hull, false);
+	
+	Scalar color = Scalar(255, 255, 0);// (5 * i*i, 50 * i*i, 0);
+	drawContours(*imgDraw, contours, maxi, color, 2, 8, hierarchy, 0, Point());
+
+	return hull;
 }
