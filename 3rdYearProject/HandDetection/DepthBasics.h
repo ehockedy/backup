@@ -8,7 +8,7 @@
 
 #include "resource.h"
 #include "ImageRenderer.h"
-
+#include <fstream>
 #include <opencv2/opencv.hpp>
 
 struct pixel {
@@ -44,6 +44,8 @@ private:
 	//The minium and maximum depths
 	int						minDepth;
 	int						maxDepth;
+
+	std::fstream output;
 
     // Current Kinect
     IKinectSensor*          m_pKinectSensor;
@@ -102,6 +104,10 @@ private:
 	void drawBoxes(cv::Mat* img, pixel point);
 
 	std::vector<cv::Point> getHull(cv::Mat img, pixel point, cv::Mat *imgD);
+
+	void drawHull(cv::Mat *img, std::vector<cv::Point> hull);
+
+	std::string getMLdata(std::vector<cv::Point> hullPoints, pixel centralPoint);
 
 	//void drawHandOutline(cv::Mat *imgDraw, cv:: Mat *imgEdit);
 };

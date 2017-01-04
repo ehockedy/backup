@@ -7,6 +7,7 @@ Adapted from example code included in the Kinect SDK.
 #include <strsafe.h>
 #include "resource.h"
 #include "DepthBasics.h"
+#include <fstream>
 
 #include <opencv2/opencv.hpp>
 
@@ -14,6 +15,7 @@ Adapted from example code included in the Kinect SDK.
 
 using namespace cv;
 using namespace std;
+
 
 /// <summary>
 /// Entry point for the application
@@ -32,8 +34,8 @@ int APIENTRY wWinMain(
 {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
-
-    CDepthBasics application;
+    
+	CDepthBasics application;
     application.Run(hInstance, nShowCmd);
 }
 
@@ -62,6 +64,8 @@ CDepthBasics::CDepthBasics() :
 	refreshFrame = 0;
 	vid = VideoWriter("handsOutput1.avi", CV_FOURCC('M', 'P', '4', '2'), 15.0, Size(cDepthWidth, cDepthHeight), 1);
 	doVid = false;
+	//remove("output.txt");
+	output.open("trainingData1.txt", ios::app);//fstream::out);
 }
   
 
@@ -70,6 +74,7 @@ CDepthBasics::CDepthBasics() :
 /// </summary>
 CDepthBasics::~CDepthBasics()
 {
+	output.close();
     /*if (m_pDepthRGBX)
     {
         delete [] m_pDepthRGBX;
@@ -133,7 +138,7 @@ void CDepthBasics::Update()
         int nWidth = 0;
         int nHeight = 0;
         USHORT nDepthMinReliableDistance = 0;
-        USHORT nDepthMaxDistance = 1000;
+        USHORT nDepthMaxDistance = 3000;
         UINT nBufferSize = 0;
         UINT16 *pBuffer = NULL;
 
@@ -306,29 +311,24 @@ void CDepthBasics::Draw()
 	{
 		multiplier = ((double)prevPoints.first.depth / 255.0)*0.5 + 0.5;
 		newPoints.first = findClosestInRange(&imgG, prevPoints.first, checkSize, 1); //Search locally for the closest pixel around the first current closest
-		multiplier = ((double)prevPoints.second.depth / 255.0)*0.5 + 0.5;
-		newPoints.second = findClosestInRange(&imgG, prevPoints.second, checkSize, 2); //Search around the second
+		/*multiplier = ((double)prevPoints.second.depth / 255.0)*0.5 + 0.5;
+		newPoints.second = findClosestInRange(&imgG, prevPoints.second, checkSize, 2); //Search around the second*/
 	}
-
-	Mat hand1 = getHandArea(imgD, newPoints.first);
-	Mat hand2 = getHandArea(imgD, newPoints.second);
+	
 	//cvtColor(hand1, hand1, COLOR_RGB2GRAY);
 	//drawHandOutline(&imgD, &hand1);
 
-
+	Mat hand1 = getHandArea(imgD, newPoints.first);
 	vector<Point> convexHull = getHull(hand1, newPoints.first, &imgD);
-	for (int i = 0; i< convexHull.size(); i++)
-	{
-		Scalar color = Scalar(255, 255, 0);
-		circle(imgD, convexHull[i], 3, Scalar(0, 0, 255));// , 1, 8, vector<Vec4i>(), 0, Point());
-	}
+	drawHull(&imgD, convexHull);
 
+	/*Mat hand2 = getHandArea(imgD, newPoints.second);
 	vector<Point> convexHull2 = getHull(hand2, newPoints.second, &imgD);
-	for (int i = 0; i< convexHull2.size(); i++)
-	{
-		Scalar color = Scalar(255, 0, 255);
-		circle(imgD, convexHull2[i], 3, Scalar(255, 0, 255));// , 1, 8, vector<Vec4i>(), 0, Point());
-	}
+	drawHull(&imgD, convexHull2);*/
+	
+	
+
+	//PRINT(data);
 
 	//drawBoxes(&imgD, newPoints.first); //Draw the boxes on the output image
 	//drawBoxes(&imgD, newPoints.second);
@@ -342,7 +342,27 @@ void CDepthBasics::Draw()
 		vid.write(imgD);
 	}
 	int key = waitKey(25);//Number of ms image is displayed for. 1s = 1000ms. Increasing this decreases FPS. Perhaps do this if need to make it run better. 16.666 = 60fps, 25 = 40fps
-	if (key != -1)
+	if (key == 'z')
+	{
+		string data = getMLdata(convexHull, newPoints.first);
+		output << "1," << data;
+	}
+	else if (key == 'x')
+	{
+		string data = getMLdata(convexHull, newPoints.first);
+		output << "2," << data;
+	}
+	else if (key == 'c')
+	{
+		string data = getMLdata(convexHull, newPoints.first);
+		output << "3," << data;
+	}
+	else if (key == 'v')
+	{
+		string data = getMLdata(convexHull, newPoints.first);
+		output << "4," << data;
+	}
+	else if (key != -1)
 	{
 		run = 1; //Terminate the program
 	}
@@ -531,15 +551,10 @@ vector<Point> CDepthBasics::getHull(Mat img, pixel p, Mat *imgDraw)
 	cvtColor(outImg, outImg, COLOR_RGB2GRAY);
 	vector<vector<Point> > contours;
 	vector<Vec4i> hierarchy;
-	/*PRINT(p.xpos);
-	PRINT("\n");
-	PRINT(p.ypos);
-	PRINT("\n");
-	PRINT(imgDraw->at<Vec3b>(Point(p.xpos, p.ypos))[0]);
-	PRINT("\n");
-	PRINT("\n");*/
-	int thresh = 100;// p.depth + 50;// imgDraw->at<Vec3b>(Point(p.xpos, p.ypos))[0] + 50;
+
+	int thresh = p.depth - 40;//the depth away from the central pixel that is allowed to be included in the hand region
 	threshold(outImg, outImg, thresh, 255, THRESH_BINARY);
+
 	/// Find contours
 	int xoffset = max(0, p.xpos - (int)(120 * mult));
 	int yoffset = max(0, p.ypos - (int)(150 * mult));
@@ -557,10 +572,91 @@ vector<Point> CDepthBasics::getHull(Mat img, pixel p, Mat *imgDraw)
 	}
 
 	vector<Point> hull(maxiSize);
-	convexHull(Mat(contours[maxi]), hull, false);
-	
+	if (contours.size() > 0)
+	{
+		convexHull(Mat(contours[maxi]), hull, false);
+	}
 	Scalar color = Scalar(255, 255, 0);// (5 * i*i, 50 * i*i, 0);
 	drawContours(*imgDraw, contours, maxi, color, 2, 8, hierarchy, 0, Point());
 
 	return hull;
+}
+
+void CDepthBasics::drawHull(Mat *img, vector<Point> hull)
+{
+	for (int i = 0; i< hull.size(); i++)
+	{
+		Scalar color = Scalar(255, 0, 255);
+		circle(*img, hull[i], 3, Scalar(255, 0, 255));// , 1, 8, vector<Vec4i>(), 0, Point());
+	}
+}
+
+float getDist(Point p, pixel p2)
+{
+	double mult = ((double)p2.depth / 255.0)*0.5 + 0.5;
+	float xDist = p.x - p2.xpos;
+	float yDist = p.y - p2.ypos;
+	float dist = sqrt(xDist*xDist + yDist*yDist)*mult;
+	float rounded = round(dist*1000.0) / 1000.0;
+	return rounded;
+}
+
+string CDepthBasics::getMLdata(vector<Point> hullPoints, pixel centralPoint)
+{
+	ostringstream ss;
+	string data = "";
+	if (hullPoints.size() >= 25)
+	{
+		for (int i = 0; i < 25; i++)
+		{
+			ss << getDist(hullPoints[i], centralPoint);
+			string s(ss.str());
+			data += s;
+			data += ',';
+			ss.str(string());
+			ss.clear();
+		}
+	}
+	else
+	{
+		int j = 0; //The current position in the convexHull list
+		float count = 0; //The value that i must be greater than in order for a ? to be included
+		float gap = 25.0 / (25.0 - hullPoints.size()); //The gap between ? on average
+		/*for (int k = 0; k < hullPoints.size(); k++)
+		{
+			PRINT(hullPoints[k].x);
+			PRINT(" ");
+			PRINT(hullPoints[k].y);
+			PRINT(", ");
+		}
+		PRINT("\n");*/
+		for (int i = 0; i < 25; i++)
+		{
+			if (i >= count) //Interpolate such that we get a total of 25 features. Interpolation might work since the area around the hand is fairly continuous
+			{
+				float avg = (getDist(hullPoints[j % hullPoints.size()], centralPoint) + getDist(hullPoints[(j + 1) % hullPoints.size()], centralPoint)) / 2;
+				ss << avg;
+				string s(ss.str());
+				data += s;
+				data += ',';
+				ss.str(string());
+				ss.clear();
+				count += gap;
+			}
+			else
+			{
+				ss << getDist(hullPoints[j], centralPoint);
+				string s(ss.str());
+				data += s;
+				data += ',';
+				ss.str(string());
+				ss.clear();
+				j++;
+			}
+		}
+	}
+
+	data.pop_back();
+	data += '\n';
+	return data;
 }
