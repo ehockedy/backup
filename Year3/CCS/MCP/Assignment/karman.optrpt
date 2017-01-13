@@ -1,0 +1,265 @@
+Intel(R) Advisor can now assist with vectorization and show optimization
+  report messages with your source code.
+See "https://software.intel.com/en-us/intel-advisor-xe" for details.
+
+
+Begin optimization report for: main(int, char **)
+
+    Report from: Vector optimizations [vec]
+
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(570,3) inlined into C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1464,5)
+   remark #25460: No loop optimizations reported
+
+   LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(571,5) inlined into C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1464,5)
+      remark #25460: No loop optimizations reported
+
+      LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(572,7) inlined into C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1464,5)
+         remark #25460: No loop optimizations reported
+      LOOP END
+   LOOP END
+LOOP END
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(993,3) inlined into C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1474,2)
+   remark #25460: No loop optimizations reported
+
+   LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(994,5) inlined into C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1474,2)
+      remark #25460: No loop optimizations reported
+
+      LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(995,7) inlined into C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1474,2)
+         remark #25460: No loop optimizations reported
+      LOOP END
+
+      LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(995,7) inlined into C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1474,2)
+      <Remainder>
+      LOOP END
+   LOOP END
+LOOP END
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1001,3) inlined into C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1474,2)
+   remark #25460: No loop optimizations reported
+
+   LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1002,5) inlined into C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1474,2)
+      remark #25460: No loop optimizations reported
+
+      LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1003,7) inlined into C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1474,2)
+         remark #25460: No loop optimizations reported
+      LOOP END
+
+      LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1003,7) inlined into C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1474,2)
+      <Remainder>
+      LOOP END
+   LOOP END
+LOOP END
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1009,3) inlined into C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1474,2)
+   remark #25460: No loop optimizations reported
+
+   LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1010,5) inlined into C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1474,2)
+      remark #25460: No loop optimizations reported
+
+      LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1011,7) inlined into C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1474,2)
+         remark #25460: No loop optimizations reported
+      LOOP END
+
+      LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1011,7) inlined into C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1474,2)
+      <Remainder>
+      LOOP END
+   LOOP END
+LOOP END
+===========================================================================
+
+Begin optimization report for: setPressureBoundaryConditions()
+
+    Report from: Vector optimizations [vec]
+
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(620,3)
+   remark #25460: No loop optimizations reported
+
+   LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(621,5)
+      remark #25460: No loop optimizations reported
+   LOOP END
+LOOP END
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(629,3)
+   remark #25460: No loop optimizations reported
+
+   LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(630,5)
+      remark #25460: No loop optimizations reported
+   LOOP END
+LOOP END
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(639,3)
+   remark #25460: No loop optimizations reported
+
+   LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(640,5)
+      remark #25460: No loop optimizations reported
+   LOOP END
+LOOP END
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(653,3)
+   remark #25460: No loop optimizations reported
+
+   LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(654,4)
+      remark #25460: No loop optimizations reported
+
+      LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(655,6)
+         remark #25460: No loop optimizations reported
+
+         LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(671,6)
+            remark #25460: No loop optimizations reported
+
+            LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(673,7)
+               remark #15301: SIMD LOOP WAS VECTORIZED
+
+               LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(675,11)
+               LOOP END
+            LOOP END
+         LOOP END
+      LOOP END
+   LOOP END
+LOOP END
+===========================================================================
+
+Begin optimization report for: setupScenario()
+
+    Report from: Vector optimizations [vec]
+
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1073,3)
+   remark #25460: No loop optimizations reported
+LOOP END
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1073,3)
+<Remainder>
+LOOP END
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1077,3)
+   remark #25460: No loop optimizations reported
+LOOP END
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1077,3)
+<Remainder>
+LOOP END
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1082,3)
+   remark #25460: No loop optimizations reported
+LOOP END
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1082,3)
+<Remainder>
+LOOP END
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1086,3)
+   remark #25460: No loop optimizations reported
+LOOP END
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1086,3)
+<Remainder>
+LOOP END
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1090,3)
+   remark #25460: No loop optimizations reported
+LOOP END
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1090,3)
+<Remainder>
+LOOP END
+===========================================================================
+
+Begin optimization report for: numToBoundaryDirs(std::vector<int, std::allocator<int>> *, int)
+
+    Report from: Vector optimizations [vec]
+
+
+LOOP BEGIN at C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\INCLUDE\xmemory(420,2) inlined into C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(155,30)
+LOOP END
+===========================================================================
+
+Begin optimization report for: setNewVelocities()
+
+    Report from: Vector optimizations [vec]
+
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(993,3)
+   remark #25460: No loop optimizations reported
+
+   LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(994,5)
+      remark #25460: No loop optimizations reported
+
+      LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(995,7)
+         remark #25460: No loop optimizations reported
+      LOOP END
+
+      LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(995,7)
+      <Remainder>
+      LOOP END
+   LOOP END
+LOOP END
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1001,3)
+   remark #25460: No loop optimizations reported
+
+   LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1002,5)
+      remark #25460: No loop optimizations reported
+
+      LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1003,7)
+         remark #25460: No loop optimizations reported
+      LOOP END
+
+      LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1003,7)
+      <Remainder>
+      LOOP END
+   LOOP END
+LOOP END
+
+LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1009,3)
+   remark #25460: No loop optimizations reported
+
+   LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1010,5)
+      remark #25460: No loop optimizations reported
+
+      LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1011,7)
+         remark #25460: No loop optimizations reported
+      LOOP END
+
+      LOOP BEGIN at C:\Users\Edward\Documents\DURHAM\Year 3\CCS\MCP\Assignment\karman.cpp(1011,7)
+      <Remainder>
+      LOOP END
+   LOOP END
+LOOP END
+===========================================================================
+
+Begin optimization report for: std::numpunct<char>::_Getcat(const std::locale::facet **, const std::locale *)
+
+    Report from: Vector optimizations [vec]
+
+
+LOOP BEGIN at C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\INCLUDE\xlocale(730,2) inlined into C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\INCLUDE\xlocnum(170,34)
+LOOP END
+
+LOOP BEGIN at C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\INCLUDE\xlocale(730,2) inlined into C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\INCLUDE\xlocnum(170,34)
+   remark #25460: No loop optimizations reported
+
+   LOOP BEGIN at C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\INCLUDE\xlocale(730,2) inlined into C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\INCLUDE\xlocnum(170,34)
+   <Multiversioned v2>
+   LOOP END
+
+   LOOP BEGIN at C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\INCLUDE\xlocale(730,2) inlined into C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\INCLUDE\xlocnum(170,34)
+   <Remainder, Multiversioned v2>
+   LOOP END
+LOOP END
+
+LOOP BEGIN at C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\INCLUDE\xlocale(730,2) inlined into C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\INCLUDE\xlocnum(170,34)
+   remark #25460: No loop optimizations reported
+
+   LOOP BEGIN at C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\INCLUDE\xlocale(730,2) inlined into C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\INCLUDE\xlocnum(170,34)
+   <Multiversioned v2>
+   LOOP END
+
+   LOOP BEGIN at C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\INCLUDE\xlocale(730,2) inlined into C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\INCLUDE\xlocnum(170,34)
+   <Remainder, Multiversioned v2>
+   LOOP END
+LOOP END
+===========================================================================

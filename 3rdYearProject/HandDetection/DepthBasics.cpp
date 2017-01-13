@@ -300,7 +300,7 @@ void CDepthBasics::Draw()
 
 	int checkSize = 60; //The size of the area around the current center of the hand which will be checked for the next best pixel 
 						//Still not sure of best size. Small medium and large seem to all have separate benefits. 120 actually works quite well.
-
+	bool twoHands = true;
 	double multiplier = 1;
 
 	if (refreshFrame == 0)
@@ -309,10 +309,10 @@ void CDepthBasics::Draw()
 	}
 	else
 	{
-		multiplier = ((double)prevPoints.first.depth / 255.0)*0.5 + 0.5;
 		newPoints.first = findClosestInRange(&imgG, prevPoints.first, checkSize, 1); //Search locally for the closest pixel around the first current closest
-		/*multiplier = ((double)prevPoints.second.depth / 255.0)*0.5 + 0.5;
-		newPoints.second = findClosestInRange(&imgG, prevPoints.second, checkSize, 2); //Search around the second*/
+		if (twoHands) {
+			newPoints.second = findClosestInRange(&imgG, prevPoints.second, checkSize, 2); //Search around the second
+		}
 	}
 	
 	//cvtColor(hand1, hand1, COLOR_RGB2GRAY);
@@ -322,10 +322,12 @@ void CDepthBasics::Draw()
 	vector<Point> convexHull = getHull(hand1, newPoints.first, &imgD);
 	drawHull(&imgD, convexHull);
 
-	/*Mat hand2 = getHandArea(imgD, newPoints.second);
-	vector<Point> convexHull2 = getHull(hand2, newPoints.second, &imgD);
-	drawHull(&imgD, convexHull2);*/
-	
+	if (twoHands)
+	{
+		Mat hand2 = getHandArea(imgD, newPoints.second);
+		vector<Point> convexHull2 = getHull(hand2, newPoints.second, &imgD);
+		drawHull(&imgD, convexHull2);
+	}
 	
 
 	//PRINT(data);

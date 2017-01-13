@@ -1,0 +1,320 @@
+Flat profile:
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls  us/call  us/call  name    
+ 93.94    458.21   458.21                             computeP()
+  6.06    487.78    29.57   820002    36.06    36.06  setPressureBoundaryConditions()
+  0.01    487.84     0.06                             computeRhs()
+  0.01    487.87     0.03                             computeF()
+  0.00    487.88     0.01                             setNewVelocities()
+  0.00    487.89     0.01                             setVelocityBoundaryConditions(double)
+  0.00    487.89     0.00    19800     0.00     0.00  std::vector<int, std::allocator<int> >::operator=(std::vector<int, std::allocator<int> > const&)
+  0.00    487.89     0.00    19646     0.00     0.00  numToBoundaryDirs(int)
+  0.00    487.89     0.00        1     0.00     0.00  _GLOBAL__sub_I_numberOfCellsPerAxisX
+  0.00    487.89     0.00        1     0.00     0.00  setupBoxes()
+  0.00    487.89     0.00        1     0.00     0.00  std::vector<std::vector<int, std::allocator<int> >, std::allocator<std::vector<int, std::allocator<int> > > >::_M_fill_insert(__gnu_cxx::__normal_iterator<std::vector<int, std::allocator<int> >*, std::vector<std::vector<int, std::allocator<int> >, std::allocator<std::vector<int, std::allocator<int> > > > >, unsigned long, std::vector<int, std::allocator<int> > const&)
+  0.00    487.89     0.00                             plotVTKFile()
+  0.00    487.89     0.00                             getCellIndex(int, int, int)
+  0.00    487.89     0.00                             getFaceIndexX(int, int, int)
+  0.00    487.89     0.00                             getFaceIndexY(int, int, int)
+  0.00    487.89     0.00                             getFaceIndexZ(int, int, int)
+  0.00    487.89     0.00                             setupScenario()
+  0.00    487.89     0.00                             getVertexIndex(int, int, int)
+  0.00    487.89     0.00                             freeDataStructures()
+  0.00    487.89     0.00                             validateThatEntriesAreBounded(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)
+  0.00    487.89     0.00                             getH()
+  0.00    487.89     0.00                             assertion(bool, int)
+  0.00    487.89     0.00                             updateInk()
+  0.00    487.89     0.00                             std::ctype<char>::do_widen(char) const
+  0.00    487.89     0.00                             std::vector<std::vector<int, std::allocator<int> >, std::allocator<std::vector<int, std::allocator<int> > > >::~vector()
+  0.00    487.89     0.00                             __do_global_dtors_aux
+  0.00    487.89     0.00                             __do_global_dtors_aux_fini_array_entry
+  0.00    487.89     0.00                             __frame_dummy_init_array_entry
+  0.00    487.89     0.00                             __gmon_start__
+  0.00    487.89     0.00                             __libc_csu_fini
+  0.00    487.89     0.00                             __libc_csu_init
+  0.00    487.89     0.00                             _fini
+  0.00    487.89     0.00                             _init
+  0.00    487.89     0.00                             _start
+  0.00    487.89     0.00                             atexit
+  0.00    487.89     0.00                             data_start
+  0.00    487.89     0.00                             deregister_tm_clones
+  0.00    487.89     0.00                             etext
+  0.00    487.89     0.00                             frame_dummy
+  0.00    487.89     0.00                             main
+  0.00    487.89     0.00                             register_tm_clones
+
+ %         the percentage of the total running time of the
+time       program used by this function.
+
+cumulative a running sum of the number of seconds accounted
+ seconds   for by this function and those listed above it.
+
+ self      the number of seconds accounted for by this
+seconds    function alone.  This is the major sort for this
+           listing.
+
+calls      the number of times this function was invoked, if
+           this function is profiled, else blank.
+
+ self      the average number of milliseconds spent in this
+ms/call    function per call, if this function is profiled,
+	   else blank.
+
+ total     the average number of milliseconds spent in this
+ms/call    function and its descendents per call, if this
+	   function is profiled, else blank.
+
+name       the name of the function.  This is the minor sort
+           for this listing. The index shows the location of
+	   the function in the gprof listing. If the index is
+	   in parenthesis it shows where it would appear in
+	   the gprof listing if it were to be printed.
+
+Copyright (C) 2012-2015 Free Software Foundation, Inc.
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.
+
+		     Call graph (explanation follows)
+
+
+granularity: each sample hit covers 2 byte(s) for 0.00% of 487.89 seconds
+
+index % time    self  children    called     name
+                                                 <spontaneous>
+[1]    100.0  458.21   29.57                 computeP() [1]
+               29.57    0.00  820002/820002      setPressureBoundaryConditions() [2]
+-----------------------------------------------
+               29.57    0.00  820002/820002      computeP() [1]
+[2]      6.1   29.57    0.00  820002         setPressureBoundaryConditions() [2]
+-----------------------------------------------
+                                                 <spontaneous>
+[3]      0.0    0.06    0.00                 computeRhs() [3]
+-----------------------------------------------
+                                                 <spontaneous>
+[4]      0.0    0.03    0.00                 computeF() [4]
+-----------------------------------------------
+                                                 <spontaneous>
+[5]      0.0    0.01    0.00                 setNewVelocities() [5]
+-----------------------------------------------
+                                                 <spontaneous>
+[6]      0.0    0.01    0.00                 setVelocityBoundaryConditions(double) [6]
+-----------------------------------------------
+                                                 <spontaneous>
+[7]      0.0    0.00    0.00                 atexit [7]
+-----------------------------------------------
+                                                 <spontaneous>
+[8]      0.0    0.00    0.00                 data_start [8]
+-----------------------------------------------
+                                                 <spontaneous>
+[9]      0.0    0.00    0.00                 deregister_tm_clones [9]
+-----------------------------------------------
+                                                 <spontaneous>
+[10]     0.0    0.00    0.00                 etext [10]
+-----------------------------------------------
+                                                 <spontaneous>
+[11]     0.0    0.00    0.00                 frame_dummy [11]
+-----------------------------------------------
+                                                 <spontaneous>
+[12]     0.0    0.00    0.00                 main [12]
+-----------------------------------------------
+                                                 <spontaneous>
+[13]     0.0    0.00    0.00                 register_tm_clones [13]
+-----------------------------------------------
+                0.00    0.00   19800/19800       setupBoxes() [17]
+[14]     0.0    0.00    0.00   19800         std::vector<int, std::allocator<int> >::operator=(std::vector<int, std::allocator<int> > const&) [14]
+-----------------------------------------------
+                0.00    0.00   19646/19646       setupBoxes() [17]
+[15]     0.0    0.00    0.00   19646         numToBoundaryDirs(int) [15]
+-----------------------------------------------
+                0.00    0.00       1/1           __libc_csu_init [38]
+[16]     0.0    0.00    0.00       1         _GLOBAL__sub_I_numberOfCellsPerAxisX [16]
+-----------------------------------------------
+                0.00    0.00       1/1           setupScenario() [24]
+[17]     0.0    0.00    0.00       1         setupBoxes() [17]
+                0.00    0.00   19800/19800       std::vector<int, std::allocator<int> >::operator=(std::vector<int, std::allocator<int> > const&) [14]
+                0.00    0.00   19646/19646       numToBoundaryDirs(int) [15]
+-----------------------------------------------
+                0.00    0.00       1/1           setupScenario() [24]
+[18]     0.0    0.00    0.00       1         std::vector<std::vector<int, std::allocator<int> >, std::allocator<std::vector<int, std::allocator<int> > > >::_M_fill_insert(__gnu_cxx::__normal_iterator<std::vector<int, std::allocator<int> >*, std::vector<std::vector<int, std::allocator<int> >, std::allocator<std::vector<int, std::allocator<int> > > > >, unsigned long, std::vector<int, std::allocator<int> > const&) [18]
+-----------------------------------------------
+                                                 <spontaneous>
+[19]     0.0    0.00    0.00                 plotVTKFile() [19]
+-----------------------------------------------
+                                                 <spontaneous>
+[20]     0.0    0.00    0.00                 getCellIndex(int, int, int) [20]
+-----------------------------------------------
+                                                 <spontaneous>
+[21]     0.0    0.00    0.00                 getFaceIndexX(int, int, int) [21]
+-----------------------------------------------
+                                                 <spontaneous>
+[22]     0.0    0.00    0.00                 getFaceIndexY(int, int, int) [22]
+-----------------------------------------------
+                                                 <spontaneous>
+[23]     0.0    0.00    0.00                 getFaceIndexZ(int, int, int) [23]
+-----------------------------------------------
+                                                 <spontaneous>
+[24]     0.0    0.00    0.00                 setupScenario() [24]
+                0.00    0.00       1/1           setupBoxes() [17]
+                0.00    0.00       1/1           std::vector<std::vector<int, std::allocator<int> >, std::allocator<std::vector<int, std::allocator<int> > > >::_M_fill_insert(__gnu_cxx::__normal_iterator<std::vector<int, std::allocator<int> >*, std::vector<std::vector<int, std::allocator<int> >, std::allocator<std::vector<int, std::allocator<int> > > > >, unsigned long, std::vector<int, std::allocator<int> > const&) [18]
+-----------------------------------------------
+                                                 <spontaneous>
+[25]     0.0    0.00    0.00                 getVertexIndex(int, int, int) [25]
+-----------------------------------------------
+                                                 <spontaneous>
+[26]     0.0    0.00    0.00                 freeDataStructures() [26]
+-----------------------------------------------
+                                                 <spontaneous>
+[27]     0.0    0.00    0.00                 validateThatEntriesAreBounded(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [27]
+-----------------------------------------------
+                                                 <spontaneous>
+[28]     0.0    0.00    0.00                 getH() [28]
+-----------------------------------------------
+                                                 <spontaneous>
+[29]     0.0    0.00    0.00                 assertion(bool, int) [29]
+-----------------------------------------------
+                                                 <spontaneous>
+[30]     0.0    0.00    0.00                 updateInk() [30]
+-----------------------------------------------
+                                                 <spontaneous>
+[31]     0.0    0.00    0.00                 std::ctype<char>::do_widen(char) const [31]
+-----------------------------------------------
+                                                 <spontaneous>
+[32]     0.0    0.00    0.00                 std::vector<std::vector<int, std::allocator<int> >, std::allocator<std::vector<int, std::allocator<int> > > >::~vector() [32]
+-----------------------------------------------
+                                                 <spontaneous>
+[33]     0.0    0.00    0.00                 __do_global_dtors_aux [33]
+-----------------------------------------------
+                                                 <spontaneous>
+[34]     0.0    0.00    0.00                 __do_global_dtors_aux_fini_array_entry [34]
+-----------------------------------------------
+                                                 <spontaneous>
+[35]     0.0    0.00    0.00                 __frame_dummy_init_array_entry [35]
+-----------------------------------------------
+                                                 <spontaneous>
+[36]     0.0    0.00    0.00                 __gmon_start__ [36]
+-----------------------------------------------
+                                                 <spontaneous>
+[37]     0.0    0.00    0.00                 __libc_csu_fini [37]
+-----------------------------------------------
+                                                 <spontaneous>
+[38]     0.0    0.00    0.00                 __libc_csu_init [38]
+                0.00    0.00       1/1           _GLOBAL__sub_I_numberOfCellsPerAxisX [16]
+-----------------------------------------------
+                                                 <spontaneous>
+[39]     0.0    0.00    0.00                 _fini [39]
+-----------------------------------------------
+                                                 <spontaneous>
+[40]     0.0    0.00    0.00                 _init [40]
+-----------------------------------------------
+                                                 <spontaneous>
+[41]     0.0    0.00    0.00                 _start [41]
+-----------------------------------------------
+
+ This table describes the call tree of the program, and was sorted by
+ the total amount of time spent in each function and its children.
+
+ Each entry in this table consists of several lines.  The line with the
+ index number at the left hand margin lists the current function.
+ The lines above it list the functions that called this function,
+ and the lines below it list the functions this one called.
+ This line lists:
+     index	A unique number given to each element of the table.
+		Index numbers are sorted numerically.
+		The index number is printed next to every function name so
+		it is easier to look up where the function is in the table.
+
+     % time	This is the percentage of the `total' time that was spent
+		in this function and its children.  Note that due to
+		different viewpoints, functions excluded by options, etc,
+		these numbers will NOT add up to 100%.
+
+     self	This is the total amount of time spent in this function.
+
+     children	This is the total amount of time propagated into this
+		function by its children.
+
+     called	This is the number of times the function was called.
+		If the function called itself recursively, the number
+		only includes non-recursive calls, and is followed by
+		a `+' and the number of recursive calls.
+
+     name	The name of the current function.  The index number is
+		printed after it.  If the function is a member of a
+		cycle, the cycle number is printed between the
+		function's name and the index number.
+
+
+ For the function's parents, the fields have the following meanings:
+
+     self	This is the amount of time that was propagated directly
+		from the function into this parent.
+
+     children	This is the amount of time that was propagated from
+		the function's children into this parent.
+
+     called	This is the number of times this parent called the
+		function `/' the total number of times the function
+		was called.  Recursive calls to the function are not
+		included in the number after the `/'.
+
+     name	This is the name of the parent.  The parent's index
+		number is printed after it.  If the parent is a
+		member of a cycle, the cycle number is printed between
+		the name and the index number.
+
+ If the parents of the function cannot be determined, the word
+ `<spontaneous>' is printed in the `name' field, and all the other
+ fields are blank.
+
+ For the function's children, the fields have the following meanings:
+
+     self	This is the amount of time that was propagated directly
+		from the child into the function.
+
+     children	This is the amount of time that was propagated from the
+		child's children to the function.
+
+     called	This is the number of times the function called
+		this child `/' the total number of times the child
+		was called.  Recursive calls by the child are not
+		listed in the number after the `/'.
+
+     name	This is the name of the child.  The child's index
+		number is printed after it.  If the child is a
+		member of a cycle, the cycle number is printed
+		between the name and the index number.
+
+ If there are any cycles (circles) in the call graph, there is an
+ entry for the cycle-as-a-whole.  This entry shows who called the
+ cycle (as parents) and the members of the cycle (as children.)
+ The `+' recursive calls entry shows the number of function calls that
+ were internal to the cycle, and the calls entry for each member shows,
+ for that member, how many times it was called from other members of
+ the cycle.
+
+Copyright (C) 2012-2015 Free Software Foundation, Inc.
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.
+
+Index by function name
+
+  [16] _GLOBAL__sub_I_numberOfCellsPerAxisX (karman.cpp) [6] setVelocityBoundaryConditions(double) [36] __gmon_start__
+   [3] computeRhs()           [27] validateThatEntriesAreBounded(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [37] __libc_csu_fini
+  [17] setupBoxes()           [28] getH()                 [38] __libc_csu_init
+  [19] plotVTKFile()           [4] computeF()             [39] _fini
+  [20] getCellIndex(int, int, int) [1] computeP()         [40] _init
+  [21] getFaceIndexX(int, int, int) [29] assertion(bool, int) [41] _start
+  [22] getFaceIndexY(int, int, int) [30] updateInk()       [7] atexit
+  [23] getFaceIndexZ(int, int, int) [31] std::ctype<char>::do_widen(char) const [8] data_start
+  [24] setupScenario()        [18] std::vector<std::vector<int, std::allocator<int> >, std::allocator<std::vector<int, std::allocator<int> > > >::_M_fill_insert(__gnu_cxx::__normal_iterator<std::vector<int, std::allocator<int> >*, std::vector<std::vector<int, std::allocator<int> >, std::allocator<std::vector<int, std::allocator<int> > > > >, unsigned long, std::vector<int, std::allocator<int> > const&) [9] deregister_tm_clones
+  [25] getVertexIndex(int, int, int) [32] std::vector<std::vector<int, std::allocator<int> >, std::allocator<std::vector<int, std::allocator<int> > > >::~vector() [10] etext
+   [5] setNewVelocities()     [14] std::vector<int, std::allocator<int> >::operator=(std::vector<int, std::allocator<int> > const&) [11] frame_dummy
+  [15] numToBoundaryDirs(int) [33] __do_global_dtors_aux  [12] main
+  [26] freeDataStructures()   [34] __do_global_dtors_aux_fini_array_entry [13] register_tm_clones
+   [2] setPressureBoundaryConditions() [35] __frame_dummy_init_array_entry
