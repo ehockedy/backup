@@ -10,6 +10,9 @@
 #include "ImageRenderer.h"
 #include <fstream>
 #include <opencv2/opencv.hpp>
+#include <shark/Data/Dataset.h>
+#include <shark/Algorithms/Trainers/RFTrainer.h> //the random forest trainer
+#include <shark/ObjectiveFunctions/Loss/ZeroOneLoss.h> //zero one loss for evaluation
 
 struct pixel {
 	int xpos;
@@ -47,6 +50,8 @@ private:
 
 	std::fstream output;
 
+	shark::RFClassifier model;
+
     // Current Kinect
     IKinectSensor*          m_pKinectSensor;
 
@@ -62,6 +67,8 @@ private:
 
 	bool					doVid;
 	cv::VideoWriter			vid;
+
+	bool train;
 
 	std::pair<pixel, pixel> newPoints;
 	std::pair<pixel, pixel> prevPoints;
@@ -107,7 +114,15 @@ private:
 
 	void drawHull(cv::Mat *img, std::vector<cv::Point> hull);
 
-	std::string getMLdata(std::vector<cv::Point> hullPoints, pixel centralPoint);
+	std::string getMLTrainData(std::vector<cv::Point> hullPoints, pixel centralPoint);
+
+	shark::Data<shark::RealVector> getMLdata(std::vector<cv::Point> hullPoints, pixel centralPoint);
+
+	int classify(shark::Data<shark::RealVector> prediction, int sampleNum, double confidenceThreshold);
+
+	float getDist(cv::Point p, pixel p2);
+
+	cv::Point getMaxPoint(cv::Mat *img, std::vector<cv::Point> hull, pixel centre);
 
 	//void drawHandOutline(cv::Mat *imgDraw, cv:: Mat *imgEdit);
 };

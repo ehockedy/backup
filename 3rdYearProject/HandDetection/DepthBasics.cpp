@@ -9,12 +9,19 @@ Adapted from example code included in the Kinect SDK.
 #include "DepthBasics.h"
 #include <fstream>
 
+//Shark ML
+#include <shark/Data/Dataset.h>
+#include <shark/Algorithms/Trainers/RFTrainer.h> //the random forest trainer
+#include <shark/ObjectiveFunctions/Loss/ZeroOneLoss.h> //zero one loss for evaluation
+#include <shark/Data/Csv.h>
+
 #include <opencv2/opencv.hpp>
 
 #define PRINT( s ){wostringstream os_; os_ << s; OutputDebugStringW( os_.str().c_str() );} //Allows output to debug terminal below
 
 using namespace cv;
 using namespace std;
+using namespace shark;
 
 
 /// <summary>
@@ -65,7 +72,14 @@ CDepthBasics::CDepthBasics() :
 	vid = VideoWriter("handsOutput1.avi", CV_FOURCC('M', 'P', '4', '2'), 15.0, Size(cDepthWidth, cDepthHeight), 1);
 	doVid = false;
 	//remove("output.txt");
-	output.open("trainingData1.txt", ios::app);//fstream::out);
+	output.open("data.csv", ios::app);//fstream::out);
+	
+	ifstream ifs("trainedRF.model");
+	boost::archive::polymorphic_text_iarchive ia(ifs);  //re train
+	model.read(ia);
+	ifs.close();
+
+	train = true;
 }
   
 
@@ -300,7 +314,7 @@ void CDepthBasics::Draw()
 
 	int checkSize = 60; //The size of the area around the current center of the hand which will be checked for the next best pixel 
 						//Still not sure of best size. Small medium and large seem to all have separate benefits. 120 actually works quite well.
-	bool twoHands = true;
+	bool twoHands = false;
 	double multiplier = 1;
 
 	if (refreshFrame == 0)
@@ -321,12 +335,38 @@ void CDepthBasics::Draw()
 	Mat hand1 = getHandArea(imgD, newPoints.first);
 	vector<Point> convexHull = getHull(hand1, newPoints.first, &imgD);
 	drawHull(&imgD, convexHull);
-
+	Point best = getMaxPoint(&imgD, convexHull, newPoints.first);
+	
 	if (twoHands)
 	{
 		Mat hand2 = getHandArea(imgD, newPoints.second);
 		vector<Point> convexHull2 = getHull(hand2, newPoints.second, &imgD);
 		drawHull(&imgD, convexHull2);
+	}
+	
+	if (false)
+	{
+		ClassificationDataset data;
+		importCSV(data, "data.csv", FIRST_COLUMN, ',');
+		data.shuffle();
+
+		RFTrainer trainer;
+		RFClassifier model;
+		trainer.train(model, data);
+
+		ofstream ofs("trainedRF.model");
+		boost::archive::polymorphic_text_oarchive oa(ofs);
+		model.write(oa);
+		ofs.close();
+
+		train = false;
+	}
+	else
+	{
+		Data<RealVector> poseData = getMLdata(convexHull, newPoints.first);
+		Data<RealVector> prediction = model(poseData);
+		int pose = classify(prediction, 0, 0.5);
+		putText(imgD, to_string(pose), Point(30, 50), FONT_HERSHEY_SIMPLEX, 2, Scalar(0, 0, 255), 3);
 	}
 	
 
@@ -346,22 +386,22 @@ void CDepthBasics::Draw()
 	int key = waitKey(25);//Number of ms image is displayed for. 1s = 1000ms. Increasing this decreases FPS. Perhaps do this if need to make it run better. 16.666 = 60fps, 25 = 40fps
 	if (key == 'z')
 	{
-		string data = getMLdata(convexHull, newPoints.first);
+		string data = getMLTrainData(convexHull, newPoints.first);
 		output << "1," << data;
 	}
 	else if (key == 'x')
 	{
-		string data = getMLdata(convexHull, newPoints.first);
+		string data = getMLTrainData(convexHull, newPoints.first);
 		output << "2," << data;
 	}
 	else if (key == 'c')
 	{
-		string data = getMLdata(convexHull, newPoints.first);
+		string data = getMLTrainData(convexHull, newPoints.first);
 		output << "3," << data;
 	}
 	else if (key == 'v')
 	{
-		string data = getMLdata(convexHull, newPoints.first);
+		string data = getMLTrainData(convexHull, newPoints.first);
 		output << "4," << data;
 	}
 	else if (key != -1)
@@ -586,14 +626,14 @@ vector<Point> CDepthBasics::getHull(Mat img, pixel p, Mat *imgDraw)
 
 void CDepthBasics::drawHull(Mat *img, vector<Point> hull)
 {
-	for (int i = 0; i< hull.size(); i++)
+	circle(*img, hull[0], 3, Scalar(0, 255, 0), -1);
+	for (int i = 1; i< hull.size(); i++)
 	{
-		Scalar color = Scalar(255, 0, 255);
 		circle(*img, hull[i], 3, Scalar(255, 0, 255));// , 1, 8, vector<Vec4i>(), 0, Point());
 	}
 }
 
-float getDist(Point p, pixel p2)
+float CDepthBasics::getDist(Point p, pixel p2)
 {
 	double mult = ((double)p2.depth / 255.0)*0.5 + 0.5;
 	float xDist = p.x - p2.xpos;
@@ -603,15 +643,32 @@ float getDist(Point p, pixel p2)
 	return rounded;
 }
 
-string CDepthBasics::getMLdata(vector<Point> hullPoints, pixel centralPoint)
+Point CDepthBasics::getMaxPoint(Mat *img, vector<Point> hull, pixel centre)
 {
+	Point best;
+	double dist = 0;
+	for (int i = 0; i < hull.size(); i++)
+	{
+		if (hull[i].y < centre.ypos && getDist(hull[i], centre) > dist)
+		{
+			dist = getDist(hull[i], centre);
+			best = hull[i];
+		}
+	}
+	circle(*img, best, 3, Scalar(0, 0, 255), -1);
+	return best;
+}
+
+string CDepthBasics::getMLTrainData(vector<Point> hullPoints, pixel centralPoint)
+{
+	double mult = ((double)centralPoint.depth / 255.0)*0.5 + 0.5;
 	ostringstream ss;
 	string data = "";
 	if (hullPoints.size() >= 25)
 	{
 		for (int i = 0; i < 25; i++)
 		{
-			ss << getDist(hullPoints[i], centralPoint);
+			ss << getDist(hullPoints[i], centralPoint) / mult;// << ',' << getAngle(hullPoints[i], centralPoint);
 			string s(ss.str());
 			data += s;
 			data += ',';
@@ -624,20 +681,12 @@ string CDepthBasics::getMLdata(vector<Point> hullPoints, pixel centralPoint)
 		int j = 0; //The current position in the convexHull list
 		float count = 0; //The value that i must be greater than in order for a ? to be included
 		float gap = 25.0 / (25.0 - hullPoints.size()); //The gap between ? on average
-		/*for (int k = 0; k < hullPoints.size(); k++)
-		{
-			PRINT(hullPoints[k].x);
-			PRINT(" ");
-			PRINT(hullPoints[k].y);
-			PRINT(", ");
-		}
-		PRINT("\n");*/
 		for (int i = 0; i < 25; i++)
 		{
 			if (i >= count) //Interpolate such that we get a total of 25 features. Interpolation might work since the area around the hand is fairly continuous
 			{
 				float avg = (getDist(hullPoints[j % hullPoints.size()], centralPoint) + getDist(hullPoints[(j + 1) % hullPoints.size()], centralPoint)) / 2;
-				ss << avg;
+				ss << avg / mult;// << ',' << getAngle(hullPoints[j], centralPoint);;
 				string s(ss.str());
 				data += s;
 				data += ',';
@@ -647,7 +696,7 @@ string CDepthBasics::getMLdata(vector<Point> hullPoints, pixel centralPoint)
 			}
 			else
 			{
-				ss << getDist(hullPoints[j], centralPoint);
+				ss << getDist(hullPoints[j], centralPoint) / mult;// << ',' << getAngle(hullPoints[j], centralPoint);;
 				string s(ss.str());
 				data += s;
 				data += ',';
@@ -658,7 +707,69 @@ string CDepthBasics::getMLdata(vector<Point> hullPoints, pixel centralPoint)
 		}
 	}
 
-	data.pop_back();
+	data.pop_back(); //Get rid of the final comma
 	data += '\n';
 	return data;
+}
+
+Data<RealVector> CDepthBasics::getMLdata(vector<Point> hullPoints, pixel centralPoint)
+{
+	double mult = ((double)centralPoint.depth / 255.0)*0.5 + 0.5;
+	RealVector data = {};
+	if (hullPoints.size() >= 25)
+	{
+		for (int i = 0; i < 25; i++)
+		{
+			data.push_back(getDist(hullPoints[i], centralPoint)/mult);
+			//data.push_back(getAngle(hullPoints[i], centralPoint));
+
+		}
+	}
+	else
+	{
+		int j = 0; //The current position in the convexHull list
+		float count = 0; //The value that i must be greater than in order for a ? to be included
+		float gap = 25.0 / (25.0 - hullPoints.size()); //The gap between ? on average
+													  
+		for (int i = 0; i < 25; i++)
+		{
+			if (i >= count) //Interpolate such that we get a total of 25 features. Interpolation might work since the area around the hand is fairly continuous
+			{
+				float avg = (getDist(hullPoints[j % hullPoints.size()], centralPoint) + getDist(hullPoints[(j + 1) % hullPoints.size()], centralPoint)) / 2;
+				data.push_back(avg/mult);
+				//data.push_back(getAngle(hullPoints[j], centralPoint));
+				count += gap;
+			}
+			else
+			{
+				//PRINT(data.size());
+				data.push_back(getDist(hullPoints[j], centralPoint)/mult);
+				//data.push_back(getAngle(hullPoints[j], centralPoint));
+				j++;
+			}
+		}
+	}
+	vector<RealVector> inputData = { data };
+	Data<RealVector> dataOut = createDataFromRange(inputData);
+	return dataOut;
+}
+
+int CDepthBasics::classify(Data<RealVector> prediction, int sampleNum, double confidenceThreshold) //Chooses class from 1 to n, or 0 if unsure, sampleNum is for is there is more than 1 piece of data, it chooses the sampleNumth piece, confidenceThreshold is the value, below which the unknown label is returned.
+{
+	double classificationVal = 0;
+	int classification = 0;
+	for (int i = 0; i < prediction.element(sampleNum).size(); i++)
+	{
+		//cout << prediction.element(sampleNum)[i] << endl;
+		if (prediction.element(sampleNum)[i] > classificationVal)
+		{
+			classificationVal = prediction.element(sampleNum)[i];
+			classification = i;
+		}
+	}
+	if (classificationVal < confidenceThreshold)
+	{
+		classification = -1;
+	}
+	return classification + 1;
 }

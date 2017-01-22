@@ -134,6 +134,9 @@ std::vector<std::vector<int> > boxes;
 bool* boxHasBoundary;
 bool* boxIsNotInside;
 
+vector<double> filler (6*6*6, 0);
+vector<vector<double> > ghostBoxes; 
+
 /**
  * Is cell inside domain
  */
@@ -209,6 +212,11 @@ int getCellIndex(int ix, int iy, int iz) {
   assertion(iz<numberOfCellsPerAxisZ+2,__LINE__);
   return ix+iy*(numberOfCellsPerAxisX+2)+iz*(numberOfCellsPerAxisX+2)*(numberOfCellsPerAxisY+2);
 }
+
+int getGhostIndex(int ix, int iy, int iz) {
+	return ix + iy*6 + iz*6*6;
+}
+
 
 /**
  * Maps the three coordinates onto one vertex index.
@@ -592,239 +600,130 @@ void computeRhs() {
  * again.
  */
 void setPressureBoundaryConditions() {
-  int ix, iy, iz;
+	int ix, iy, iz;
 
-  // Neumann Boundary conditions for p
-  //Following 3 forfor loops can be parallelised within each forfor since the 2 acessed cells are different.
-  //Cannot parallise the 3 forfors though sice the initially acesses cell is can be the same e.g. (0,0,0) 
-  //Probably CPU since its only dealing with small pieces of data, and due to parallization that frequent accessing of data will no longer be a concern
-  //Boundaries at opposite x ends - 
-  //   ______
-  //  /|    z|
-  // /_|___/_|
-  // | /   y |
-  // |/__x_|/
-  //So this does the left and right sides of the above cube
-  //Can do part 2 here
-  //Since boxes split up into 4x4x4 can do a box at a time, but vectorized
-  //So store each edge box in a struct that stores x, y, z, and which face it is (can store multiple faces if corner/edge) - this specifies which parts of the box can be ignored
-  //Then for each box, using vectorization can process the boundary conditions for 4 values all in 1 go - or even 16 since only dependent on the values in the direction perpendicular to that face
-  for (iy=0; iy<numberOfCellsPerAxisY+2; iy++) {
-    for (iz=0; iz<numberOfCellsPerAxisZ+2; iz++) {
-      ix=0;
-      p[ getCellIndex(ix,iy,iz) ]   = p[ getCellIndex(ix+1,iy,iz) ];
-      ix=numberOfCellsPerAxisX+1;
-      p[ getCellIndex(ix,iy,iz) ]   = p[ getCellIndex(ix-1,iy,iz) ];
-    }
-  }
-  //top and bottom
-  for (ix=0; ix<numberOfCellsPerAxisX+2; ix++) {
-    for (iz=0; iz<numberOfCellsPerAxisZ+2; iz++) {
-      iy=0;
-      p[ getCellIndex(ix,iy,iz) ]   = p[ getCellIndex(ix,iy+1,iz) ];
-      iy=numberOfCellsPerAxisY+1;
-      p[ getCellIndex(ix,iy,iz) ]   = p[ getCellIndex(ix,iy-1,iz) ];
-    }
-  }
-  //front and back 
-  for (ix=0; ix<numberOfCellsPerAxisX+2; ix++) {
-    for (iy=0; iy<numberOfCellsPerAxisY+2; iy++) {
-      iz=0;
-      p[ getCellIndex(ix,iy,iz) ]   = p[ getCellIndex(ix,iy,iz+1) ];
-      iz=numberOfCellsPerAxisZ+1;
-      p[ getCellIndex(ix,iy,iz) ]   = p[ getCellIndex(ix,iy,iz-1) ];
-    }
-  }
-
-  // Normalise pressure at rhs to zero
-  for (iy=1; iy<numberOfCellsPerAxisY+2-1; iy++) {
-    for (iz=1; iz<numberOfCellsPerAxisZ+2-1; iz++) {
-      p[ getCellIndex(numberOfCellsPerAxisX+1,iy,iz) ]   = 0.0;
-    }
-  }
-  int count = 0;
-  int count2 = 0;
-  /*int counter = 0;
-  int counter2 = 0;
-  int counter3 = 0;*/
-  // Pressure conditions around obstacle
-  //Q2
-  //Go through all 4x4x4 i.e. iz/iy/ix+=4, then iterate from 0 to 3 and store if any of those cells are on a boundary. This is done once
-  //Then in this part of the code, if at least 1 of the cells in the 4x4x4 is on a boundary we go through each direction (x/y/z) 
-  // and fully vectorize any computations i.e. 16 cells at a time (so a square/plane in the 4x4x4 box) by having the direction as the first for loop, 
-  // then pragma simd the 2nd and 3rd loops, and this is done 4 times for each layer in the first direction, and done for each direction
-  for (iz=1; iz<numberOfCellsPerAxisZ+1; iz=iz+4) {
-  	for (iy=1; iy<numberOfCellsPerAxisY+1; iy=iy+4) {
-  	  for (ix=2; ix<numberOfCellsPerAxisX+1; ix=ix+4) {
-        //std::cout << getCellIndex(ix,iy,iz) << std::endl;
-		  //std::cout << iz << " " << iy << " " << ix << std::endl;
-		  //std::cout <<
-		  /*for(int x=0; x<4; x++){
-			    //#pragma simd
-  				for(int y=0; y<4; y++){
-					//#pragma simd 
-  				    for(int z=0; z<4; z++){
-						//std::cout << iz+z << " " << iy+y << " " << ix+x << std::endl;
-						counter2++;
-					}
-				}
-		  }*/
-		  
-		  if(boxHasBoundary[getCellIndex(ix,iy,iz)]) //If this box has at least 1 cell with a boudary 
-		  {
-			  count2++;
-			for(int z=0; z<4 && iz+z<numberOfCellsPerAxisZ+1; z++){
-				//#pragma simd
-				for(int x=0; x<4 && ix+x<numberOfCellsPerAxisX+1; x++){ 
-					//#pragma simd
-					for(int y=0; y<4 && iy+y<numberOfCellsPerAxisY+1; y++){
-
-						p[getCellIndex(ix+x, iy+y, iz+z+boxes[getCellIndex(ix+x,iy+y,iz+z)][4])] = p[getCellIndex(ix+x,iy+y,iz+z)];
-						p[getCellIndex(ix+x, iy+y, iz+z-boxes[getCellIndex(ix+x,iy+y,iz+z)][5])] = p[getCellIndex(ix+x,iy+y,iz+z)];
-						
-					}
-				}
-			}
-  			
-  			for(int y=0; y<4 && iy+y<numberOfCellsPerAxisY+1; y++){
-				//#pragma simd /
-  				for(int z=0; z<4 && iz+z<numberOfCellsPerAxisZ+1; z++){ 
-					//#pragma simd //ivdep
-					for(int x=0; x<4 && ix+x<numberOfCellsPerAxisX+1; x++){
-						p[getCellIndex(ix+x, iy+y+boxes[getCellIndex(ix+x,iy+y,iz+z)][2], iz+z)] = p[getCellIndex(ix+x,iy+y,iz+z)];
-						p[getCellIndex(ix+x, iy+y-boxes[getCellIndex(ix+x,iy+y,iz+z)][3], iz+z)] = p[getCellIndex(ix+x,iy+y,iz+z)];
-  				    }
-  			    }
-  			}
-			for(int x=0; x<4 && ix+x<numberOfCellsPerAxisX+1 ; x++){
-			    //#pragma simd
-  				for(int y=0; y<4 && iy+y<numberOfCellsPerAxisY+1; y++){
-					//#pragma simd 
-  				    for(int z=0; z<4 && iz+z<numberOfCellsPerAxisZ+1; z++){
-						//count++;
-						p[getCellIndex(ix+x+boxes[getCellIndex(ix+x,iy+y,iz+z)][0], iy+y, iz+z)] = p[getCellIndex(ix+x,iy+y,iz+z)];
-						p[getCellIndex(ix+x-boxes[getCellIndex(ix+x,iy+y,iz+z)][1], iy+y, iz+z)] = p[getCellIndex(ix+x,iy+y,iz+z)];
-					}
-  				}
-  			}
-  			
-		  }
-		  else
-		  {
-			  count++;// = count + 64;
-		  }
+	// Neumann Boundary conditions for p
+	//Following 3 forfor loops can be parallelised within each forfor since the 2 acessed cells are different.
+	//Cannot parallise the 3 forfors though sice the initially acesses cell is can be the same e.g. (0,0,0) 
+	//Probably CPU since its only dealing with small pieces of data, and due to parallization that frequent accessing of data will no longer be a concern
+	//Boundaries at opposite x ends - 
+	//   ______
+	//  /|    z|
+	// /_|___/_|
+	// | /   y |
+	// |/__x_|/
+	//So this does the left and right sides of the above cube
+	//Can do part 2 here
+	//Since boxes split up into 4x4x4 can do a box at a time, but vectorized
+	//So store each edge box in a struct that stores x, y, z, and which face it is (can store multiple faces if corner/edge) - this specifies which parts of the box can be ignored
+	//Then for each box, using vectorization can process the boundary conditions for 4 values all in 1 go - or even 16 since only dependent on the values in the direction perpendicular to that face
+	for (iy = 0; iy<numberOfCellsPerAxisY + 2; iy++) {
+		for (iz = 0; iz<numberOfCellsPerAxisZ + 2; iz++) {
+			ix = 0;
+			p[getCellIndex(ix, iy, iz)] = p[getCellIndex(ix + 1, iy, iz)];
+			ix = numberOfCellsPerAxisX + 1;
+			p[getCellIndex(ix, iy, iz)] = p[getCellIndex(ix - 1, iy, iz)];
 		}
 	}
-  }
-  //std::cout << count << " " << count2 << std::endl;
-  /*iz = 1;
-  iy = 1;
-  ix = 2;*/
-  //std::cout << p[getCellIndex(25, 5, 2)] << std::endl;
-  //std::cout << iz << " " << iy << " " << ix << std::endl << std::endl << std::endl;
-  //The cells that dont fit into a box
-	/*if(iz < numberOfCellsPerAxisZ+1 || iy < numberOfCellsPerAxisY+1 || ix < numberOfCellsPerAxisX+1)
-	{		
-		iz = std::max(1, iz%(numberOfCellsPerAxisZ+1));
-		iy = std::max(1, iy%(numberOfCellsPerAxisY+1));
-		ix = std::max(2, ix%(numberOfCellsPerAxisX+1));
-
-	  for (iz ; iz<numberOfCellsPerAxisZ+1; iz=iz+1) {
-		for (iy ; iy<numberOfCellsPerAxisY+1; iy=iy+1) {
-		  for (ix ; ix<numberOfCellsPerAxisX+1; ix=ix+1) {
-			if (cellIsInside[getCellIndex(ix,iy,iz)]) {
-			  if ( !cellIsInside[getCellIndex(ix-1,iy,iz)] ) { // left neighbour
-				p[getCellIndex(ix-1,iy,iz)]     = p[getCellIndex(ix,iy,iz)];
-				//std::cout << iz << " " << iy << " " << ix-1 << std::endl;
-				//counter3++;
-			  }
-			  if ( !cellIsInside[getCellIndex(ix+1,iy,iz)] ) { // right neighbour
-				p[getCellIndex(ix+1,iy,iz)]     = p[getCellIndex(ix,iy,iz)];
-				//std::cout << iz << " " << iy << " " << ix+1 << std::endl;
-				//counter3++;
-			  }
-			  if ( !cellIsInside[getCellIndex(ix,iy-1,iz)] ) { // bottom neighbour
-				p[getCellIndex(ix,iy-1,iz)]     = p[getCellIndex(ix,iy,iz)];
-				//std::cout << iz << " " << iy-1 << " " << ix << std::endl;
-				//counter3++;
-			  }
-			  if ( !cellIsInside[getCellIndex(ix,iy+1,iz)] ) { // right neighbour
-				p[getCellIndex(ix,iy+1,iz)]     = p[getCellIndex(ix,iy,iz)];
-				//std::cout << iz << " " << iy+1 << " " << ix << std::endl;
-				//counter3++;
-			  }
-			  if ( !cellIsInside[getCellIndex(ix,iy,iz-1)] ) { // front neighbour
-				p[getCellIndex(ix,iy,iz-1)]     = p[getCellIndex(ix,iy,iz)];
-				//std::cout << iz-1 << " " << iy << " " << ix << std::endl;
-				//counter3++;
-			  }
-			  if ( !cellIsInside[getCellIndex(ix,iy,iz+1)] ) { // right neighbour
-				p[getCellIndex(ix,iy,iz+1)]     = p[getCellIndex(ix,iy,iz)];
-				//std::cout << iz+1 << " " << iy << " " << ix << std::endl;
-				//counter3++;
-			  }
-			}
-		  }
+	//top and bottom
+	for (ix = 0; ix<numberOfCellsPerAxisX + 2; ix++) {
+		for (iz = 0; iz<numberOfCellsPerAxisZ + 2; iz++) {
+			iy = 0;
+			p[getCellIndex(ix, iy, iz)] = p[getCellIndex(ix, iy + 1, iz)];
+			iy = numberOfCellsPerAxisY + 1;
+			p[getCellIndex(ix, iy, iz)] = p[getCellIndex(ix, iy - 1, iz)];
 		}
-	  }
-	}*/
-	
-	/*
-	/*std::vector<int> dirs = boxes[getCellIndex(ix+x,iy+y,iz+z)];
-						int index = getCellIndex(ix+x,iy+y,iz+z);
-						int index2 = getCellIndex(ix+x,iy+y,iz+z+dirs[4]); //+z direction
-						int index3 = getCellIndex(ix+x,iy+y,iz+z-dirs[5]); //-z direction 
-						if(dirs[5] == 1)
-						{
-							counter3++;
-							//std::cout << iz+z-1 << " " << iy+y << " " << ix+x << std::endl;
-						}
-						if(dirs[4] == 1)
-						{
-							counter3++;
-							//std::cout << iz+z+1 << " " << iy+y << " " << ix+x << std::endl;
-						}
-						p[index2] = p[index];
-						p[index3] = p[index];
-						//std::cout << "3" << std::endl;
-  						if ( !cellIsInside[getCellIndex(ix+x,iy+y,iz+z-1)] ) { // left neighbour
-  							   p[getCellIndex(ix+x,iy+y,iz+z-1)]     = p[getCellIndex(ix+x,iy+y,iz+z)];
+	}
+	//front and back 
+	for (ix = 0; ix<numberOfCellsPerAxisX + 2; ix++) {
+		for (iy = 0; iy<numberOfCellsPerAxisY + 2; iy++) {
+			iz = 0;
+			p[getCellIndex(ix, iy, iz)] = p[getCellIndex(ix, iy, iz + 1)];
+			iz = numberOfCellsPerAxisZ + 1;
+			p[getCellIndex(ix, iy, iz)] = p[getCellIndex(ix, iy, iz - 1)];
+		}
+	}
+
+	// Normalise pressure at rhs to zero
+	for (iy = 1; iy<numberOfCellsPerAxisY + 2 - 1; iy++) {
+		for (iz = 1; iz<numberOfCellsPerAxisZ + 2 - 1; iz++) {
+			p[getCellIndex(numberOfCellsPerAxisX + 1, iy, iz)] = 0.0;
+		}
+	}
+	int count = 0;
+	int count2 = 0;
+	/*int counter = 0;
+	int counter2 = 0;
+	int counter3 = 0;*/
+	// Pressure conditions around obstacle
+	//Q2
+	//Go through all 4x4x4 i.e. iz/iy/ix+=4, then iterate from 0 to 3 and store if any of those cells are on a boundary. This is done once
+	//Then in this part of the code, if at least 1 of the cells in the 4x4x4 is on a boundary we go through each direction (x/y/z) 
+	// and fully vectorize any computations i.e. 16 cells at a time (so a square/plane in the 4x4x4 box) by having the direction as the first for loop, 
+	// then pragma simd the 2nd and 3rd loops, and this is done 4 times for each layer in the first direction, and done for each direction
+	for (iz = 1; iz<numberOfCellsPerAxisZ + 1; iz = iz + 4) {
+		for (iy = 1; iy<numberOfCellsPerAxisY + 1; iy = iy + 4) {
+			for (ix = 2; ix<numberOfCellsPerAxisX + 1; ix = ix + 4) {
+				//std::cout << getCellIndex(ix,iy,iz) << std::endl;
+				//std::cout << iz << " " << iy << " " << ix << std::endl;
+				//std::cout <<
+				/*for(int x=0; x<4; x++){
+				//#pragma simd
+				for(int y=0; y<4; y++){
+				//#pragma simd
+				for(int z=0; z<4; z++){
+				//std::cout << iz+z << " " << iy+y << " " << ix+x << std::endl;
+				counter2++;
+				}
+				}
+				}*/
+
+				if (boxHasBoundary[getCellIndex(ix, iy, iz)]) //If this box has at least 1 cell with a boudary 
+				{
+					count2++;
+					for (int z = 0; z<4 && iz + z<numberOfCellsPerAxisZ + 1; z++) {
+						//#pragma simd
+						for (int x = 0; x<4 && ix + x<numberOfCellsPerAxisX + 1; x++) {
+							//#pragma simd
+							for (int y = 0; y<4 && iy + y<numberOfCellsPerAxisY + 1; y++) {
+
+								p[getCellIndex(ix + x, iy + y, iz + z + boxes[getCellIndex(ix + x, iy + y, iz + z)][4])] = p[getCellIndex(ix + x, iy + y, iz + z)];
+								p[getCellIndex(ix + x, iy + y, iz + z - boxes[getCellIndex(ix + x, iy + y, iz + z)][5])] = p[getCellIndex(ix + x, iy + y, iz + z)];
+
 							}
-  						if ( !cellIsInside[getCellIndex(ix+x,iy+y,iz+z+1)] ) { //not else since could have obstacle boundary either side 
-  							   p[getCellIndex(ix+x,iy+y,iz+z+1)]     = p[getCellIndex(ix+x,iy+y,iz+z)];
+						}
+					}
+
+					for (int y = 0; y<4 && iy + y<numberOfCellsPerAxisY + 1; y++) {
+						//#pragma simd /
+						for (int z = 0; z<4 && iz + z<numberOfCellsPerAxisZ + 1; z++) {
+							//#pragma simd //ivdep
+							for (int x = 0; x<4 && ix + x<numberOfCellsPerAxisX + 1; x++) {
+								p[getCellIndex(ix + x, iy + y + boxes[getCellIndex(ix + x, iy + y, iz + z)][2], iz + z)] = p[getCellIndex(ix + x, iy + y, iz + z)];
+								p[getCellIndex(ix + x, iy + y - boxes[getCellIndex(ix + x, iy + y, iz + z)][3], iz + z)] = p[getCellIndex(ix + x, iy + y, iz + z)];
 							}
-						//}
-	*/
-	
-  /*
-  for (int iz=1; iz<numberOfCellsPerAxisZ+1; iz++) {
-    for (int iy=1; iy<numberOfCellsPerAxisY+1; iy++) {
-      for (int ix=2; ix<numberOfCellsPerAxisX+1; ix++) {
-        if (cellIsInside[getCellIndex(ix,iy,iz)]) {
-          if ( !cellIsInside[getCellIndex(ix-1,iy,iz)] ) { // left neighbour
-            p[getCellIndex(ix-1,iy,iz)]     = p[getCellIndex(ix,iy,iz)];
-          }
-          if ( !cellIsInside[getCellIndex(ix+1,iy,iz)] ) { // right neighbour
-            p[getCellIndex(ix+1,iy,iz)]     = p[getCellIndex(ix,iy,iz)];
-          }
-          if ( !cellIsInside[getCellIndex(ix,iy-1,iz)] ) { // bottom neighbour
-            p[getCellIndex(ix,iy-1,iz)]     = p[getCellIndex(ix,iy,iz)];
-          }
-          if ( !cellIsInside[getCellIndex(ix,iy+1,iz)] ) { // right neighbour
-            p[getCellIndex(ix,iy+1,iz)]     = p[getCellIndex(ix,iy,iz)];
-          }
-          if ( !cellIsInside[getCellIndex(ix,iy,iz-1)] ) { // front neighbour
-            p[getCellIndex(ix,iy,iz-1)]     = p[getCellIndex(ix,iy,iz)];
-          }
-          if ( !cellIsInside[getCellIndex(ix,iy,iz+1)] ) { // right neighbour
-            p[getCellIndex(ix,iy,iz+1)]     = p[getCellIndex(ix,iy,iz)];
-          }
-        }
-      }
-    }
-  }*/
-  //std::cout << "counter = " << counter2 << std::endl;
-  //std::cout << std::endl << std::endl << std::endl << std::endl; //<< "counter3 = " << counter3 << std::endl << std::endl;
+						}
+					}
+					for (int x = 0; x<4 && ix + x<numberOfCellsPerAxisX + 1; x++) {
+						//#pragma simd
+						for (int y = 0; y<4 && iy + y<numberOfCellsPerAxisY + 1; y++) {
+							//#pragma simd 
+							for (int z = 0; z<4 && iz + z<numberOfCellsPerAxisZ + 1; z++) {
+								//count++;
+								p[getCellIndex(ix + x + boxes[getCellIndex(ix + x, iy + y, iz + z)][0], iy + y, iz + z)] = p[getCellIndex(ix + x, iy + y, iz + z)];
+								p[getCellIndex(ix + x - boxes[getCellIndex(ix + x, iy + y, iz + z)][1], iy + y, iz + z)] = p[getCellIndex(ix + x, iy + y, iz + z)];
+							}
+						}
+					}
+
+				}
+				else
+				{
+					count++;// = count + 64;
+				}
+			}
+		}
+	}
 }
 
 void setupBoxes()
@@ -934,6 +833,32 @@ void setupBoxes()
 			}
 		}
 	}	
+
+	//q3 set up ghost boxes
+	/*int boxNum = 0;
+	vector<vector<double> >::iterator it;
+	for (int iz = 1; iz < numberOfCellsPerAxisZ + 1; iz = iz + 4) {
+		for (int iy = 1; iy < numberOfCellsPerAxisY + 1; iy = iy + 4) {
+			for (int ix = 2; ix < numberOfCellsPerAxisX + 1; ix = ix + 4) {
+				boxNum = getCellIndex(ix, iy, iz);
+				vector<double> gb (getGhostIndex(5,5,5),0.0);
+				it = ghostBoxes.begin();
+				ghostBoxes.insert(it+boxNum, gb);
+				vector<double>::iterator it2;
+				//cout << ghostBoxes.size() << endl;
+				for (int a = 0; a < 6 && ix + a < numberOfCellsPerAxisX + 1; a++) {
+					for (int b = 0; b < 6 && iy + b < numberOfCellsPerAxisY + 1; b++) {
+						for (int c = 0; c < 6 && iz + c < numberOfCellsPerAxisZ + 1; c++) {
+							it2 = ghostBoxes.at(boxNum).begin();
+							ghostBoxes.at(boxNum).insert(it2+getGhostIndex(a,b,c), 0.0);
+							
+						}
+					}
+				}
+				//boxNum++;
+			}
+		}
+	}*/
 	//std::cout << count << " " << count2 << std::endl;
 }
 
@@ -968,44 +893,209 @@ int computeP() {
 
     previousGlobalResidual = globalResidual;
     globalResidual         = 0.0;
+
+
+	//update contents of ghost blocks
+	int ghostBoxCounter = 0;
+	for (int iz = 1; iz < numberOfCellsPerAxisZ + 1; iz = iz + 4) {
+		for (int iy = 1; iy < numberOfCellsPerAxisY + 1; iy = iy + 4) {
+			for (int ix = 2; ix < numberOfCellsPerAxisX + 1; ix = ix + 4) {
+				ghostBoxCounter = getCellIndex(ix, iy, iz);
+				//if (!boxIsNotInside[getCellIndex(ix, iy, iz)]) {
+				//cout << ghostBoxCounter << " " << ix << " " << iy << " " << iz << endl;
+				for (int z = 0; z < 4 && iz + z < numberOfCellsPerAxisZ +1; z++) {//+1s removed (after numOf...)
+					for (int y = 0; y < 4 && iy + y < numberOfCellsPerAxisY +1; y++) {
+						for (int x = 0; x < 4 && ix + x < numberOfCellsPerAxisX +1; x++) {
+							ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(x + 1, y + 1, z + 1)) = p[getCellIndex(ix + x, iy + y, iz + z)];
+							/*if (z > 0) {
+								cout << p[getCellIndex(ix + x, iy + y, iz + z)] << " " << ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(x + 1, y + 1, z + 1)) << "   ";
+								cout << p[getCellIndex(ix + x, iy + y, iz + z-1)] << " " << ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(x + 1, y + 1, z + 1 - 1)) << endl;
+							}*/
+							//cout << p[getCellIndex(ix + x, iy + y, iz + z)] << " ";
+							//cout << ix+x << " " << iy+y << " " << iz+z << " "  << ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(x+1, y+1, z+1)) << endl;
+						}
+					}
+				}
+			}
+		}
+	}
+	 
+	/*std::cout << "25, 5, 2: " << p[getCellIndex(25, 5, 2)] << std::endl;
+	std::cout << "25, 5, 2: " << ghostBoxes.at(getCellIndex(25,5,1)).at(getGhostIndex(0,0,1)) << std::endl;
+	std::cout << "3, 1, 1: " << p[getCellIndex(3, 1, 1)] << std::endl;
+	std::cout << "3, 1, 1: " << ghostBoxes.at(getCellIndex(1, 1, 1)).at(getGhostIndex(2, 0, 0)) << std::endl;
+	cout << endl;*/
+	//Update outer layer ghost cells
+	for (int iz = 1; iz < numberOfCellsPerAxisZ + 1; iz = iz + 4) {
+		for (int iy = 1; iy < numberOfCellsPerAxisY + 1; iy = iy + 4) {
+			for (int ix = 2; ix < numberOfCellsPerAxisX + 1; ix = ix + 4) {
+				ghostBoxCounter = getCellIndex(ix, iy, iz);
+				for (int c = 0; c < 6 && iz + c < numberOfCellsPerAxisZ+2; c++) { //+2 because of the extra layers
+					for (int b = 0; b < 6 && iy + b < numberOfCellsPerAxisY+2; b++) {
+						try {
+							//cout << ix << " " << iy << " " << iz;
+							double temp = ghostBoxes.at(getCellIndex(ix - 4, iy, iz)).at(getGhostIndex(4, b, c));
+							if (temp >= 0){
+								ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(0, b, c)) = temp; //CHANGE GHOST BOX COUNTER -1
+							}
+							//cout << ix << " " << iy << " " << iz << " " << cout << ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(0, b, c)) << endl;
+						}
+						catch (exception e) //If there is not a ghostBoxCounter-1 th box
+						{
+							//cout << "1";
+							ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(0, b, c)) = ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(1, b, c));
+						}
+						
+						
+						try {
+							//cout << ix << " " << iy << " " << iz;
+							double temp = ghostBoxes.at(getCellIndex(ix + 4, iy, iz)).at(getGhostIndex(1, b, c));
+							if (temp >= 0) {
+								ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(5, b, c)) = temp;
+							}
+							//cout << ix << " " << iy << " " << iz << " " <<cout << ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(5, b, c)) << endl;
+						}
+						catch (exception e)
+						{
+							int boundary = 5-(numberOfCellsPerAxisX - ix);// min((ix + 6), numberOfCellsPerAxisX) - ix - 1;
+							//cout << "ix" << ix << " " << numberOfCellsPerAxisX << " " << boundary << endl;
+							//cout << "2";
+							ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(boundary, b, c)) = ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(boundary-1, b, c));
+						}
+						//cout << getGhostIndex(0, b, c) << ", ";
+						//cout << getGhostIndex(5, b, c) << ", ";
+						//counter++;
+					}
+				}
+				for (int b = 0; b < 6 && iy + b < numberOfCellsPerAxisY+2; b++) {
+					for (int a = 0; a < 6 && ix + a < numberOfCellsPerAxisX+2; a++) {
+						try {
+							//cout << ix << " " << iy << " " << iz;
+							double temp = ghostBoxes.at(getCellIndex(ix, iy, iz - 4)).at(getGhostIndex(a, b, 4));
+							if (temp >= 0) {
+								ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(a, b, 0)) = temp;
+							}
+							//cout << ix << " " << iy << " " << iz << " " << ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(a, b, 0)) << endl;
+						}
+						catch (exception e)
+						{
+							//cout << "3";
+							ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(a, b, 0)) = ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(a, b, 1));
+						}
+
+						
+						try {
+							//cout << ix << " " << iy << " " << iz << " " << a << " " << b << " ";
+							//cout << ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(a, b, 5)) << endl;
+							double temp = ghostBoxes.at(getCellIndex(ix, iy, iz + 4)).at(getGhostIndex(a, b, 1));
+							if (temp >= 0) {
+								ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(a, b, 5)) = temp;
+							}
+							//cout << ix << " " << iy << " " << iz << " " << ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(a, b, 5)) << endl;
+						}
+						catch (exception e)
+						{
+							int boundary = 5-(numberOfCellsPerAxisZ - iz);// min((iz + 6), numberOfCellsPerAxisZ) - iz - 1;
+							//cout << "iz" << iz << " " << numberOfCellsPerAxisZ << " " << boundary << endl;
+							//cout << ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(a, b, 4)) << endl;
+							ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(a, b, boundary)) = ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(a, b, boundary-1));
+						}
+						//ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(a, b, 0));
+						//ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(a, b, 5));
+						//cout << getGhostIndex(a, b, 0) << ", ";
+						//cout << getGhostIndex(a, b, 5) << ", ";
+						//counter++;
+					}
+				}
+				for (int a = 0; a < 6 && ix + a < numberOfCellsPerAxisX+2; a++) {
+					for (int c = 0; c < 6 && iz + c < numberOfCellsPerAxisZ+2; c++) {
+						try {
+							//cout << ix << " " << iy << " " << iz;
+							double temp = ghostBoxes.at(getCellIndex(ix, iy - 4, iz)).at(getGhostIndex(a, 4, c));
+							if (temp >= 0) {
+								ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(a, 0, c)) = temp;
+							}
+							//cout << ix << " " << iy << " " << iz << " " << ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(a, 0, c)) << endl;
+						}
+						catch (exception e)
+						{
+							//cout << "5";
+							ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(a, 0, c)) = ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(a, 1, c));
+						}
+						
+						try {
+							//cout << ix << " " << iy << " " << iz;
+							double temp = ghostBoxes.at(getCellIndex(ix, iy + 4, iz)).at(getGhostIndex(a, 1, c));
+							if (temp >= 0) {
+								ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(a, 5, c)) = temp;
+							}
+							//cout << ix << " " << iy << " " << iz << " " << ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(a, 5, c)) << endl;
+						}
+						catch (exception e)
+						{
+							int boundary = 5-(numberOfCellsPerAxisY - iy);// min((iy + 6), numberOfCellsPerAxisY) - iy - 1;
+							//cout << "iy" << iy << " " << numberOfCellsPerAxisY << " " << boundary << endl;
+							//cout << "6";
+							ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(a, boundary, c)) = ghostBoxes.at(ghostBoxCounter).at(getGhostIndex(a, boundary-1, c));
+						}
+						//ghostBoxes[ghostBoxCounter)[getGhostIndex(a, 0, c));
+						//ghostBoxes[ghostBoxCounter)[getGhostIndex(a, 5, c));
+						//cout << getGhostIndex(a, 0, c) << ", ";
+						//cout << getGhostIndex(a, 5, c) << ", ";
+						//counter++;
+					}
+				}
+				//cout << counter << endl << endl;
+				//counter = 0;	
+				//ghostBoxCounter++;
+			}
+		}
+	}
+
+
 	//This is the bottleneck of this function (and hence whole code)
 	//Cannot be parrallelised like this since the same cell could be manipulated at the same time
 	//However, can be vectorized - the 7 getCellIndex below can be executed at the same time - simd 
-    for (int iz=1; iz<numberOfCellsPerAxisZ+1; iz = iz+1) {
-      for (int iy=1; iy<numberOfCellsPerAxisY+1; iy = iy+1) {
-		  //#pragma simd
-        for (int ix=1; ix<numberOfCellsPerAxisX+1; ix = ix+1) {
-			int a = 0;
-			int b = 0;
-			int c = 0;
-			/*if (!boxIsNotInside[getCellIndex(ix, iy, iz)]) {
-				for (int c = 0; c < 4 && iz + c < numberOfCellsPerAxisZ + 1; c++) {
-					for (int b = 0; b < 4 && iy + b < numberOfCellsPerAxisY + 1; b++) {
-						for (int a = 0; a < 4 && ix + a < numberOfCellsPerAxisX + 1; a++) {*/
-							if (cellIsInside[getCellIndex(ix+a, iy+b, iz+c)]) {
-								double residual = rhs[getCellIndex(ix+a, iy+b, iz+c)] +
+	ghostBoxCounter = 0;
+    for (int iz=1; iz<numberOfCellsPerAxisZ+1; iz = iz+4) {
+      for (int iy=1; iy<numberOfCellsPerAxisY+1; iy = iy+4) {
+        for (int ix=2; ix<numberOfCellsPerAxisX+1; ix = ix+4) {
+			//if (!boxIsNotInside[getCellIndex(ix, iy, iz)]) {
+			ghostBoxCounter = getCellIndex(ix, iy, iz); //Get the index of the box stored in the vector at ix,iy,iz
+				for (int c = 1; c < 5 && iz + c-1 < numberOfCellsPerAxisZ + 1 ; c++) { //Iterate through the inner 4x4x4 box
+					for (int b = 1; b < 5 && iy + b-1 < numberOfCellsPerAxisY + 1 ; b++) {
+						for (int a = 1; a < 5 && ix + a-1 < numberOfCellsPerAxisX + 1 ; a++) {
+							//std::cout << ix << " " << iy << " " << iz << " " << a << " " << b << " " << c << std::endl;
+							//cout << getCellIndex(ix, iy, iz) << " " << ghostBoxes.size() << " " << getGhostIndex(a, b, c) << endl;
+							if (cellIsInside[getCellIndex(ix+a-1, iy+b-1, iz+c-1)]) { //-1 is because of the =1 offset from the ghost layer
+								double residual = rhs[getCellIndex(ix + a - 1, iy + b - 1, iz + c - 1)] +
 									1.0 / getH() / getH()*
 									(
-										-1.0 * p[getCellIndex(ix + a - 1, iy + b, iz + c)]
-										- 1.0 * p[getCellIndex(ix + a + 1, iy + b, iz + c)]
-										- 1.0 * p[getCellIndex(ix + a, iy + b - 1, iz + c)]
-										- 1.0 * p[getCellIndex(ix + a, iy + b + 1, iz + c)]
-										- 1.0 * p[getCellIndex(ix + a, iy + b, iz + c - 1)]
-										- 1.0 * p[getCellIndex(ix + a, iy + b, iz + c + 1)]
-										+ 6.0 * p[getCellIndex(ix + a, iy + b, iz + c)]
+										-1.0 * ghostBoxes[ghostBoxCounter][getGhostIndex(a - 1, b, c)] //Ghost index gives the index in the vector that is ghost box
+										- 1.0 * ghostBoxes[ghostBoxCounter][getGhostIndex(a + 1, b, c)] //Use the values from the ghost box to calculate residual
+										- 1.0 * ghostBoxes[ghostBoxCounter][getGhostIndex(a, b - 1, c)]
+										- 1.0 * ghostBoxes[ghostBoxCounter][getGhostIndex(a, b + 1, c)]
+										- 1.0 * ghostBoxes[ghostBoxCounter][getGhostIndex(a, b, c - 1)]
+										- 1.0 * ghostBoxes[ghostBoxCounter][getGhostIndex(a, b, c + 1)]
+										+ 6.0 * ghostBoxes[ghostBoxCounter][getGhostIndex(a, b, c)]
 										);
 								globalResidual += residual * residual;
-								p[getCellIndex(ix + a, iy + b, iz + c)] += -omega * residual / 6.0 * getH() * getH();
-								cout << p[getCellIndex(ix + a, iy + b, iz + c)] << " " << ix << " " << iy << " " << iz << endl;
-								//std::cout << p[getCellIndex(ix, iy, iz)] << std::endl;
+								p[getCellIndex(ix + a-1, iy + b-1, iz + c-1)] += -omega * residual / 6.0 * getH() * getH(); //Update both the p and ghostBox 
+								ghostBoxes[ghostBoxCounter][getGhostIndex(a, b, c)] += -omega * residual / 6.0 * getH() * getH();
+								//cout << getCellIndex(ix + a - 1, iy + b - 1, iz + c - 1) << " " << ghostBoxCounter << " " << getGhostIndex(a, b, c) << endl;
+								//cout << ix + a-1 << " " << iy + b-1 << " " << iz + c-1 << " " << ghostBoxes[ghostBoxCounter][getGhostIndex(a, b, c)] << endl;
+								//std::cout << ix << " "  << iy << " " << iz << std::endl;
 							}
 						}
 					}
-				//}
+				}
 			//}
-        //}
-      //}
+				//ghostBoxCounter++;
+        }
+      }
     }
+	//int counter = 0;
+	//cout << endl << endl << endl;
     globalResidual        = std::sqrt(globalResidual);
     firstResidual         = firstResidual==0 ? globalResidual : firstResidual;
     iterations++;
@@ -1066,6 +1156,7 @@ void setNewVelocities() {
  */
 void setupScenario() {
   const int numberOfCells = (numberOfCellsPerAxisX+2) * (numberOfCellsPerAxisY+2) * (numberOfCellsPerAxisZ+2);
+  const int numberOfGhostCells = ((numberOfCellsPerAxisX + (ceil(numberOfCellsPerAxisX / 4) * 2) + 2) * (numberOfCellsPerAxisY + (ceil(numberOfCellsPerAxisY / 4) * 2) + 2) * (numberOfCellsPerAxisZ + (ceil(numberOfCellsPerAxisZ / 4) * 2) + 2));
   const int numberOfFacesX = (numberOfCellsPerAxisX+3) * (numberOfCellsPerAxisY+2) * (numberOfCellsPerAxisZ+2);
   const int numberOfFacesY = (numberOfCellsPerAxisX+2) * (numberOfCellsPerAxisY+3) * (numberOfCellsPerAxisZ+2);
   const int numberOfFacesZ = (numberOfCellsPerAxisX+2) * (numberOfCellsPerAxisY+2) * (numberOfCellsPerAxisZ+3);
@@ -1094,7 +1185,8 @@ void setupScenario() {
   boxIsNotInside = new (std::nothrow) bool[numberOfCells];
   //std::cout << "numCells = " << numberOfCells << std::endl;
   
-
+  ghostBoxes = vector<vector<double> >(numberOfCells, filler);// ((ceil(numberOfCellsPerAxisX / 4.0) * ceil(numberOfCellsPerAxisY / 4.0) * ceil(numberOfCellsPerAxisZ / 4.0)), filler);
+  
   ink = new (std::nothrow) double[(numberOfCellsPerAxisX+1) * (numberOfCellsPerAxisY+1) * (numberOfCellsPerAxisZ+1)];
 
   cellIsInside = new (std::nothrow) bool[numberOfCells];
@@ -1462,10 +1554,13 @@ int main (int argc, char *argv[]) {
       std::cout << "    reynolds-number              Use something in-between 1 and 1000. Determines viscosity of fluid." << std::endl;
       return 1;
   }
-
-  numberOfCellsPerAxisY    = atoi(argv[1]);
-  numberOfCellsPerAxisZ    = numberOfCellsPerAxisY / 2;
-  numberOfCellsPerAxisX    = numberOfCellsPerAxisY * 5;
+  //int originalNum = atoi(argv[1]);
+  numberOfCellsPerAxisY = atoi(argv[1]);
+  numberOfCellsPerAxisZ = numberOfCellsPerAxisY / 2;
+  numberOfCellsPerAxisX = numberOfCellsPerAxisY * 5;
+  //numberOfCellsPerAxisY = originalNum + 2* ceil(originalNum /4);
+  //numberOfCellsPerAxisZ = (originalNum / 2) + 2 * ceil((originalNum / 2) / 4);
+  //numberOfCellsPerAxisX = (originalNum * 5) + 2 * ceil((originalNum * 5) / 4);
   double timeBetweenPlots  = atof(argv[2]);
   ReynoldsNumber           = atof(argv[3]);
 
@@ -1531,8 +1626,8 @@ int main (int argc, char *argv[]) {
 	std::cout << t << std::endl;
     std::cout << "25, 5, 2: " << p[getCellIndex(25, 5, 2)] << std::endl;
 	std::cout << "3, 1, 1: " << p[getCellIndex(3, 1, 1)] << std::endl;
-	std::cout << "50, 10, 5: " << p[getCellIndex(50, 10, 5)] << std::endl << std::endl;
-	
+	std::cout << "50, 10, 5: " << p[getCellIndex(50, 10, 5)] << std::endl;
+	std::cout << "4, 9, 4: " << p[getCellIndex(4, 9, 4)] << std::endl << std::endl;
 	/*for(int qq = 0 ; qq < 6 qq++)
 	{
 		std::cout << numToBoundaryDirs(23)[qq];
@@ -1543,7 +1638,7 @@ int main (int argc, char *argv[]) {
     updateInk();
 
     if (timeBetweenPlots>0.0 && (t-tOfLastSnapshot>timeBetweenPlots)) {
-      //plotVTKFile(); IO OFF FOR PROFILING
+      plotVTKFile(); //IO OFF FOR PROFILING
       std::cout << t << std::endl;
       tOfLastSnapshot = t;
     }

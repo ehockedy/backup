@@ -132,7 +132,6 @@ double* ink;
 //Q2
 std::vector<std::vector<int> > boxes;
 bool* boxHasBoundary;
-bool* boxIsNotInside;
 
 /**
  * Is cell inside domain
@@ -149,16 +148,16 @@ const int IterationsBeforeTimeStepSizeIsAltered  = 64;
 const double ChangeOfTimeStepSize                = 0.1;
 const double PPESolverThreshold                  = 1e-6;
 
-std::vector<int>  numToBoundaryDirs(int num) //This converts a base 10 number to a vector of its binary value. Num must be <= 32. The binary values correspond to the possible values of [x, -x, y, -y, z, -z], the 6 possible directions that a boundary is to a cell 
+vector<int>  numToBoundaryDirs(int num) //This converts a base 10 number to a vector of its binary value. Num must be <= 32. The binary values correspond to the possible values of [x, -x, y, -y, z, -z], the 6 possible directions that a boundary is to a cell 
 {
 	if(num == 0)
 	{
-		return std::vector<int> (6,0);
+		return vector<int> (6,0);
 	}
 	else
 	{
 		int val = num;
-		std::vector<int> dir(6); //[x, -x, y, -y, z, -z]
+		vector<int> dir(6); //[x, -x, y, -y, z, -z]
 		int maximum = (int)floor(log2(num)); //Since need to start filling up from back, may not be the case that the number can be %2 enough times to fill the array, so this is the number of times it can.
 		for(int i = 0 ; i <= maximum ; i++)
 		{
@@ -891,14 +890,12 @@ void setupBoxes()
 		for (int iy=1; iy<numberOfCellsPerAxisY+1; iy=iy+4) {
 			for (int ix=2; ix<numberOfCellsPerAxisX+1; ix=ix+4) {
 				bool hasBoundary = false;
-				bool notIn = true;
 				for(int a = 0 ; a < 4 && ix+a<numberOfCellsPerAxisX+1; a++){
 					for(int b = 0 ; b < 4 && iy+b<numberOfCellsPerAxisY+1; b++){
 						for(int c = 0 ; c < 4 && iz+c<numberOfCellsPerAxisZ+1; c++){
 							//std::cout << ix+a << " " << iy+b << " " << iz+c << std::endl;
 							//std::cout << cellIsInside[getCellIndex(ix+a,iy+b,iz+c)] << std::endl;
 							if(cellIsInside[getCellIndex(ix+a,iy+b,iz+c)]){
-								notIn = false;
 								if ( !cellIsInside[getCellIndex(ix+a+1,iy+b,iz+c)] )
 								{
 									hasBoundary = true;
@@ -928,7 +925,6 @@ void setupBoxes()
 					}	
 				}
 				boxHasBoundary[getCellIndex(ix,iy,iz)] = hasBoundary;
-				boxIsNotInside[getCellIndex(ix, iy, iz)] = notIn;
 				if(hasBoundary){count2++;}
 				else{count++;}
 			}
@@ -971,40 +967,28 @@ int computeP() {
 	//This is the bottleneck of this function (and hence whole code)
 	//Cannot be parrallelised like this since the same cell could be manipulated at the same time
 	//However, can be vectorized - the 7 getCellIndex below can be executed at the same time - simd 
-    for (int iz=1; iz<numberOfCellsPerAxisZ+1; iz = iz+1) {
-      for (int iy=1; iy<numberOfCellsPerAxisY+1; iy = iy+1) {
+    for (int iz=1; iz<numberOfCellsPerAxisZ+1; iz++) {
+      for (int iy=1; iy<numberOfCellsPerAxisY+1; iy++) {
 		  //#pragma simd
-        for (int ix=1; ix<numberOfCellsPerAxisX+1; ix = ix+1) {
-			int a = 0;
-			int b = 0;
-			int c = 0;
-			/*if (!boxIsNotInside[getCellIndex(ix, iy, iz)]) {
-				for (int c = 0; c < 4 && iz + c < numberOfCellsPerAxisZ + 1; c++) {
-					for (int b = 0; b < 4 && iy + b < numberOfCellsPerAxisY + 1; b++) {
-						for (int a = 0; a < 4 && ix + a < numberOfCellsPerAxisX + 1; a++) {*/
-							if (cellIsInside[getCellIndex(ix+a, iy+b, iz+c)]) {
-								double residual = rhs[getCellIndex(ix+a, iy+b, iz+c)] +
-									1.0 / getH() / getH()*
-									(
-										-1.0 * p[getCellIndex(ix + a - 1, iy + b, iz + c)]
-										- 1.0 * p[getCellIndex(ix + a + 1, iy + b, iz + c)]
-										- 1.0 * p[getCellIndex(ix + a, iy + b - 1, iz + c)]
-										- 1.0 * p[getCellIndex(ix + a, iy + b + 1, iz + c)]
-										- 1.0 * p[getCellIndex(ix + a, iy + b, iz + c - 1)]
-										- 1.0 * p[getCellIndex(ix + a, iy + b, iz + c + 1)]
-										+ 6.0 * p[getCellIndex(ix + a, iy + b, iz + c)]
-										);
-								globalResidual += residual * residual;
-								p[getCellIndex(ix + a, iy + b, iz + c)] += -omega * residual / 6.0 * getH() * getH();
-								cout << p[getCellIndex(ix + a, iy + b, iz + c)] << " " << ix << " " << iy << " " << iz << endl;
-								//std::cout << p[getCellIndex(ix, iy, iz)] << std::endl;
-							}
-						}
-					}
-				//}
-			//}
-        //}
-      //}
+        for (int ix=1; ix<numberOfCellsPerAxisX+1; ix++) {
+          if ( cellIsInside[getCellIndex(ix,iy,iz)] ) {
+            double residual = rhs[ getCellIndex(ix,iy,iz) ] +
+              1.0/getH()/getH()*
+              (
+                - 1.0 * p[ getCellIndex(ix-1,iy,iz) ]
+                - 1.0 * p[ getCellIndex(ix+1,iy,iz) ]
+                - 1.0 * p[ getCellIndex(ix,iy-1,iz) ]
+                - 1.0 * p[ getCellIndex(ix,iy+1,iz) ]
+                - 1.0 * p[ getCellIndex(ix,iy,iz-1) ]
+                - 1.0 * p[ getCellIndex(ix,iy,iz+1) ]
+                + 6.0 * p[ getCellIndex(ix,iy,iz) ]
+              );
+            globalResidual              += residual * residual;
+            p[ getCellIndex(ix,iy,iz) ] += -omega * residual / 6.0 * getH() * getH();
+			//std::cout << p[getCellIndex(ix, iy, iz)] << std::endl;
+          }
+        }
+      }
     }
     globalResidual        = std::sqrt(globalResidual);
     firstResidual         = firstResidual==0 ? globalResidual : firstResidual;
@@ -1091,7 +1075,6 @@ void setupScenario() {
   rhs = new (std::nothrow) double[numberOfCells];
   
   boxHasBoundary = new (std::nothrow) bool[numberOfCells];
-  boxIsNotInside = new (std::nothrow) bool[numberOfCells];
   //std::cout << "numCells = " << numberOfCells << std::endl;
   
 
@@ -1178,7 +1161,6 @@ void freeDataStructures() {
   delete[] Fz;
   delete[] cellIsInside;
   delete[] boxHasBoundary;
-  delete[] boxIsNotInside;
 
   ux  = 0;
   uy  = 0;
@@ -1190,7 +1172,6 @@ void freeDataStructures() {
   rhs = 0;
   ink = 0;
   boxHasBoundary = 0;
-  boxIsNotInside = 0;
 }
 
 
@@ -1527,11 +1508,10 @@ int main (int argc, char *argv[]) {
     // we use underrelaxation as we are interested in the pressure gradient, i.e.
     // we want to have a smooth solution
     int innerIterationsRequired = computeP();
-	
-	std::cout << t << std::endl;
+	/*std::cout << t << std::endl;
     std::cout << "25, 5, 2: " << p[getCellIndex(25, 5, 2)] << std::endl;
 	std::cout << "3, 1, 1: " << p[getCellIndex(3, 1, 1)] << std::endl;
-	std::cout << "50, 10, 5: " << p[getCellIndex(50, 10, 5)] << std::endl << std::endl;
+	std::cout << "50, 10, 5: " << p[getCellIndex(50, 10, 5)] << std::endl << std::endl;*/
 	
 	/*for(int qq = 0 ; qq < 6 qq++)
 	{
