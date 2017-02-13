@@ -6,6 +6,7 @@
 #include "ml.h"
 #include "header.h"
 #include "DepthBasics2.h"
+#include "application.h"
 
 #include <fstream>
 
@@ -22,21 +23,26 @@ using namespace cv;
 using namespace shark;
 
 bool run = true;
-bool draw = true;
+bool draw = false;
 bool twoHands = false;
 int ksize = 45;
 int sigma = 100;
 int checkSize = 60;
 int fps = 30;
+int movement = 0;
 
 void main()
 {
 	CDepthBasics cdepth;
 	ML ml;
-	
-	cdepth.SetUp(twoHands, ksize, sigma, checkSize);
+	App a;
 
-	while (run)
+	a.setup();
+	cdepth.SetUp(twoHands, ksize, sigma, checkSize, draw);
+
+	Cube cube1 = Cube(1, 0, 0);
+
+	while (run && glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && glfwWindowShouldClose(window) == 0)
 	{
 		cdepth.Update(); //Fills in depthArr
 		cdepth.FindHands(false); //Find the position of the hand(s)
@@ -54,6 +60,34 @@ void main()
 			cdepth.DrawClassification(pose);
 			cdepth.Draw();
 		}
+
+		a.preprocessing();
+
+		if (pose == 1) {
+			cube1.setColour(1, 0, 0);
+		}
+		else if (pose == 2)		{
+			cube1.setColour(0, 1, 0);
+		}
+		else if (pose == 3) {
+			cube1.setColour(0, 0, 1);
+		}
+		else {
+			cube1.setColour(0, 0, 0);
+		}
+		cube1.doBuffers();
+
+		pushMat(Model);
+			//Model = rotpos2;//MAY HAVE TO SCALE
+			Model = translate(Model, vec3((cdepth.getWidth()/2 - hand1.xpos)*0.1, (cdepth.getHeight()/2 - hand1.ypos)*0.1, hand1.depth/10-25 ));
+			MVP = Projection * View * Model;
+			glUniformMatrix4fv(a.getMatrixID(), 1, GL_FALSE, &MVP[0][0]);
+			renderAttrib(0, *cube1.getVertexBuffer());
+			renderAttrib(1, *cube1.getColourBuffer());
+			glDrawArrays(GL_TRIANGLES, 0, 12 * 3);
+		Model = popMat();
+
+		a.postprocessing();
 
 		int key = waitKey((int)(1000 / fps));
 		if (key != -1)

@@ -107,13 +107,13 @@ CDepthBasics::~CDepthBasics()
 /// </summary>
 /// <param name="hInstance">handle to the application instance</param>
 /// <param name="nCmdShow">whether to display minimized, maximized, or normally</param>
-void CDepthBasics::SetUp(bool hands, int k, int s, int check)
+void CDepthBasics::SetUp(bool hands, int k, int s, int check, bool draw)
 {
 	twoHands = hands;
 	ksize = k;
 	sigma = s;
 	checkRadius = check;
-	namedWindow("window1", WINDOW_AUTOSIZE);
+	//namedWindow("window1", WINDOW_AUTOSIZE);
 	InitializeDefaultSensor();
 	Update(); //Fills in depthArr
 	//PrepareImage();

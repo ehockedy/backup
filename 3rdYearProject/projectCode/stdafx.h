@@ -23,6 +23,12 @@
 // Kinect Header files
 #include <Kinect.h>
 
+//OPENGL stuff
+#include "targetver.h"
+#include <stdio.h>
+#include <tchar.h>
+//end opengl
+
 #pragma comment (lib, "d2d1.lib")
 
 #ifdef _UNICODE

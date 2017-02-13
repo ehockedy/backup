@@ -35,7 +35,7 @@ public:
     /// <param name="nCmdShow"></param>
     //int                     Run(HINSTANCE hInstance, int nCmdShow);
 
-	void SetUp(bool hands, int k, int s, int check);
+	void SetUp(bool hands, int k, int s, int check, bool draw);
 
 	/// <summary>
 	/// Main processing function
@@ -53,6 +53,11 @@ public:
 	pixel getHand1();
 
 	pixel getHand2();
+
+	int getWidth() { return cDepthWidth; }
+	int getHeight() { return cDepthHeight; }
+	int getMinDepth() { return minDepth; }
+	int getMaxDepth() { return maxDepth; }
 
 private:
 	//The minium and maximum depths
