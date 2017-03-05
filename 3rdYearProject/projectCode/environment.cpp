@@ -4,25 +4,169 @@
 
 using namespace std;
 using namespace glm;
+using namespace cv;
 
+vector<GLfloat> cubeVertices = {
+	-1.0f, -1.0f, -1.0f, // triangle 1 
+	-1.0f, -1.0f, 1.0f,
+	-1.0f, 1.0f, 1.0f,
 
+	1.0f, 1.0f, -1.0f, // triangle 2
+	-1.0f, -1.0f, -1.0f,
+	-1.0f, 1.0f, -1.0f,
+
+	1.0f, -1.0f, 1.0f, //triangle 3
+	-1.0f, -1.0f, -1.0f,
+	1.0f, -1.0f, -1.0f,
+
+	1.0f, 1.0f, -1.0f, //triangle 4
+	1.0f, -1.0f, -1.0f,
+	-1.0f, -1.0f, -1.0f,
+
+	-1.0f, -1.0f, -1.0f, //triangle 5
+	-1.0f, 1.0f, 1.0f,
+	-1.0f, 1.0f, -1.0f,
+
+	1.0f, -1.0f, 1.0f, //triangle 6
+	-1.0f, -1.0f, 1.0f,
+	-1.0f, -1.0f, -1.0f,
+
+	-1.0f, 1.0f, 1.0f, //triangle 7
+	-1.0f, -1.0f, 1.0f,
+	1.0f, -1.0f, 1.0f,
+
+	1.0f, 1.0f, 1.0f, //triangle 8
+	1.0f, -1.0f, -1.0f,
+	1.0f, 1.0f, -1.0f,
+
+	1.0f, -1.0f, -1.0f, //triangle 9
+	1.0f, 1.0f, 1.0f,
+	1.0f, -1.0f, 1.0f,
+
+	1.0f, 1.0f, 1.0f, //triangle 10
+	1.0f, 1.0f, -1.0f,
+	-1.0f, 1.0f, -1.0f,
+
+	1.0f, 1.0f, 1.0f, //triangle 11
+	-1.0f, 1.0f, -1.0f,
+	-1.0f, 1.0f, 1.0f,
+
+	1.0f, 1.0f, 1.0f, //triangle 12
+	-1.0f, 1.0f, 1.0f,
+	1.0f, -1.0f, 1.0f
+};
+vector<GLfloat> squareVertices = {
+	-10.0f, 0.0f, -10.0f, //back left
+	-10.0f, 0.0f, 10.0f, //front left
+	10.0f, 0.0f, -10.0f, //back right
+
+	10.0f, 0.0f, -10.0f, //back right
+	10.0f, 0.0f, 10.0f, //front right
+	-10.0f, 0.0f, 10.0f, //front left
+};
+vector<GLfloat> squareVertices2D = {
+	-10.0f, -10.0f, 0.0f, //bottom left
+	-10.0f, 10.0f, 0.0f, //top left
+	10.0f, -10.0f, 0.0f, //bottom right
+
+	10.0f, -10.0f, 0.0f, //bottom right
+	10.0f, 10.0f, 0.0f, //top right
+	-10.0f, 10.0f, 0.0f, //top left
+};
+vector<GLfloat> sliderVertices = {
+	/*-10.0f, -10.0f, 0.0f, //bottom left
+	-10.0f, 10.0f, 0.0f, //top left
+	10.0f, -10.0f, 0.0f, //bottom right
+
+	10.0f, -10.0f, 0.0f, //bottom right
+	10.0f, 10.0f, 0.0f, //top right
+	-10.0f, 10.0f, 0.0f, //top left
+
+	-10.0f, 10.0f, 0.0f, //top left
+	10.0f, 10.0f, 0.0f, //top right
+	0.0f, 15.0f, 0.0f, //top middle*/
+	
+
+	-10.0f, -35.0f, 0.0f, //bottom left
+	-10.0f, -15.0f, 0.0f, //top left
+	10.0f, -35.0f, 0.0f, //bottom right
+
+	10.0f, -35.0f, 0.0f, //bottom right
+	10.0f, -15.0f, 0.0f, //top right
+	-10.0f, -15.0f, 0.0f, //top left
+
+	-10.0f, -15.0f, 0.0f, //top left
+	10.0f, -15.0f, 0.0f, //top right
+	0.0f, -10.0f, 0.0f, //very top middle
+};
+ 
 Object::Object() {
 }
 
 Cube::Cube() {
 	numVertexAttributes = 9 * 12;
 	numVertices = 3 * 12;
-	setVertices();
+	setVertices(cubeVertices);
 	setColour(1, 0, 0);
 	doBuffers();
+	id = "cube";
 }
 
 Plane::Plane() { //infinte plane
+	id = "plane";
 	numVertexAttributes = 2 * 3 * 3;
 	numVertices = 2 * 3;
-	setVertices();
+	setVertices(squareVertices);
 	setColour(0, 1, 0);
 	doBuffers();
+}
+
+Menu2D::Menu2D() {
+	id = "menu";
+	numVertexAttributes = 2 * 3 * 3;
+	numVertices = 2 * 3;
+	setVertices(squareVertices2D);
+	setColour(1, 1, 1);
+	doBuffers();
+}
+
+Trackbar::Trackbar() {
+	id = "trackbar";
+	numVertexAttributes = 2 * 3 * 3;
+	numVertices = 2 * 3;
+	setVertices(squareVertices2D);
+	setColour(0, 0, 0);
+	doBuffers();
+}
+
+Cursor::Cursor() {
+	id = "cursor";
+	numVertexAttributes = 2 * 3 * 3;
+	numVertices = 2 * 3;
+	setVertices(squareVertices2D);
+	setColour(0.5, 0.5, 0.5);
+	doBuffers();
+}
+
+Slider::Slider() {
+	id = "slider";
+	numVertexAttributes = 3 * 3 * 3;
+	numVertices = 3 * 3;
+	setVertices(sliderVertices);
+	setColour(0.8, 0.8, 0.8);
+	doBuffers();
+}
+
+bool Slider::isWithin(float x, float y) {
+	bool result = false;
+	if (x < xpos + 10 && x > xpos - 10 && y < ypos + 10 && y > ypos - 10) {
+		result = true;
+	}
+	return result;
+}
+
+App::App() {
+	oglimg.create(height, width, CV_8UC3);
 }
 
 void Object::doBuffers() {
@@ -52,79 +196,13 @@ void Object::setColour(GLfloat r, GLfloat g, GLfloat b) {
 	}
 }
 
-void Cube::setVertices() {
-	vertices.clear();
-	GLfloat data[9 * 12] = {
-		-1.0f, -1.0f, -1.0f, // triangle 1 
-		-1.0f, -1.0f, 1.0f,
-		-1.0f, 1.0f, 1.0f,
-
-		1.0f, 1.0f, -1.0f, // triangle 2
-		-1.0f, -1.0f, -1.0f,
-		-1.0f, 1.0f, -1.0f,
-
-		1.0f, -1.0f, 1.0f, //triangle 3
-		-1.0f, -1.0f, -1.0f,
-		1.0f, -1.0f, -1.0f,
-
-		1.0f, 1.0f, -1.0f, //triangle 4
-		1.0f, -1.0f, -1.0f,
-		-1.0f, -1.0f, -1.0f,
-
-		-1.0f, -1.0f, -1.0f, //triangle 5
-		-1.0f, 1.0f, 1.0f,
-		-1.0f, 1.0f, -1.0f,
-
-		1.0f, -1.0f, 1.0f, //triangle 6
-		-1.0f, -1.0f, 1.0f,
-		-1.0f, -1.0f, -1.0f,
-
-		-1.0f, 1.0f, 1.0f, //triangle 7
-		-1.0f, -1.0f, 1.0f,
-		1.0f, -1.0f, 1.0f,
-
-		1.0f, 1.0f, 1.0f, //triangle 8
-		1.0f, -1.0f, -1.0f,
-		1.0f, 1.0f, -1.0f,
-
-		1.0f, -1.0f, -1.0f, //triangle 9
-		1.0f, 1.0f, 1.0f,
-		1.0f, -1.0f, 1.0f,
-
-		1.0f, 1.0f, 1.0f, //triangle 10
-		1.0f, 1.0f, -1.0f,
-		-1.0f, 1.0f, -1.0f,
-
-		1.0f, 1.0f, 1.0f, //triangle 11
-		-1.0f, 1.0f, -1.0f,
-		-1.0f, 1.0f, 1.0f,
-
-		1.0f, 1.0f, 1.0f, //triangle 12
-		-1.0f, 1.0f, 1.0f,
-		1.0f, -1.0f, 1.0f
-	};
+void Object::setVertices(vector<GLfloat> data) {
 	for (int i = 0; i < numVertexAttributes; i++)
 	{
 		vertices.push_back(data[i]);
 	}
 }
 
-void Plane::setVertices() {
-	vertices.clear();
-	GLfloat data[2*3*3] = {
-		-10.0f, 0.0f, -10.0f, //back left
-		-10.0f, 0.0f, 10.0f, //front left
-		10.0f, 0.0f, -10.0f, //back right
-
-		10.0f, 0.0f, -10.0f, //back right
-		10.0f, 0.0f, 10.0f, //front right
-		-10.0f, 0.0f, 10.0f, //front left
-	};
-	for (int i = 0; i < numVertexAttributes; i++)
-	{
-		vertices.push_back(data[i]);
-	}
-}
 
 void App::preprocessing(bool move) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -141,6 +219,7 @@ void App::preprocessing(bool move) {
 void App::postprocessing() {
 	glDisableVertexAttribArray(0);
 	glDisableVertexAttribArray(1);
+	glfwHideWindow(window);
 	glfwSwapBuffers(window);
 	glfwPollEvents();
 }
@@ -151,7 +230,7 @@ void App::setupView() {
 		fprintf(stderr, "Failed to initialize GLFW\n");
 		//return -1;
 	}
-
+	
 	glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3); // We want OpenGL 3.3
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -160,6 +239,7 @@ void App::setupView() {
 
 																   // Open a window and create its OpenGL context
 	window = glfwCreateWindow(width, height, "Tutorial 01", NULL, NULL); //Create the window
+	
 	if (window == NULL) {
 		fprintf(stderr, "Failed to open GLFW window. If you have an Intel GPU, they are not 3.3 compatible. Try the 2.1 version of the tutorials.\n");
 		glfwTerminate();
@@ -175,17 +255,22 @@ void App::setupView() {
 	// Ensure we can capture the escape key being pressed below
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 
+	//glEnable(GL_BLEND); //transparency
+	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	
 	glClearColor(0.0f, 0.0f, 0.1f, 0.0f);//Set the background colour
 
-										 // Enable depth test - means closest things are draw over further away things
+	// Enable depth test - means closest things are draw over further away things
 	glEnable(GL_DEPTH_TEST);
 	// Accept fragment if it closer to the camera than the former one
 	glDepthFunc(GL_LESS);
 
+	
+
 	GLuint VertexArrayID; //A predefined OpenGL type to store an unsigned binary integer. This is different to an normal unsigned int in that it is a fixed size of 32 bis, as opposed to the size of a regular int whih can vary dependig on platform. This allows GL to work with the sizes it expects to.
 	glGenVertexArrays(1, &VertexArrayID); //Specifies that 1 vertex array object name will be generated. 2nd arg is the array in which the generated vertex array object names are stored
 	glBindVertexArray(VertexArrayID); //binds the vertex array object with name VertexArrayID
-
+	
 	programID = LoadShaders("vertexshader.txt", "fragmentshader.txt");
 
 	//---------MATRICES---------
@@ -228,22 +313,43 @@ void App::setupView() {
 }
 
 bool App::continueProcessing() {
+	//Stops program is esc pressed
 	return glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && glfwWindowShouldClose(window) == 0;
 }
 
-void App::renderAttrib(int attrib, GLuint buffer) {
+void App::renderAttrib(int attrib, GLuint buffer, int numAtt) {
 	glEnableVertexAttribArray(attrib); //specify you want OpenGL to use vertex attribute arrays; without this call the data you supplied will be ignored.
 	glBindBuffer(GL_ARRAY_BUFFER, buffer);
 	//Specify the location and data format of the array of generic vertex attributes
 	//tells OpenGL what to do with the supplied array data, since OpenGL doesn't inherently know what format that data will be in
 	glVertexAttribPointer(
 		attrib,                  // Specifies the index of the generic vertex attribute to be modified
-		3,                  // Number of attributes (coordinates) per vertex
+		numAtt,                  // Number of attributes (coordinates) per vertex
 		GL_FLOAT,           // Data type of each component in the array
 		GL_FALSE,           // Whether fixed-point data values should be normalized (GL_TRUE) or converted directly as fixed-point values (GL_FALSE) when they are accessed
 		0,                  // Byte offset between consecutive generic vertex attributes. If stride​ is 0, the generic vertex attributes are understood to be tightly packed in the array
 		(void*)0            // Specifies a offset of the first component of the first generic vertex attribute in the array in the data store of the buffer currently bound to the GL_ARRAY_BUFFER target.
 	);
+}
+
+//Takes the openGL output and displays it in an openCV window
+void App::outputImage(string name, Mat handsImg) {
+	//use fast 4-byte alignment (default anyway) if possible
+	//glPixelStorei(GL_PACK_ALIGNMENT, (oglimg.step & 3) ? 1 : 4);
+	//set length of one complete row in destination data (doesn't need to equal img.cols)
+	//glPixelStorei(GL_PACK_ROW_LENGTH, oglimg.step / oglimg.elemSize());
+
+	glReadPixels(0, 0, oglimg.cols, oglimg.rows, GL_BGR, GL_UNSIGNED_BYTE, oglimg.data);
+	Mat finalImg(height, width+200, CV_8UC3); //change this if change any image dimensions
+	flip(oglimg, finalImg, 0);
+	handsImg.copyTo(finalImg(Rect(finalImg.cols - handsImg.cols, finalImg.rows - handsImg.rows, handsImg.cols, handsImg.rows)));
+	imshow(name, finalImg);
+}
+
+void App::outputImage(string name) {
+	glReadPixels(0, 0, oglimg.cols, oglimg.rows, GL_BGR, GL_UNSIGNED_BYTE, oglimg.data);
+	flip(oglimg, oglimg, 0);
+	imshow(name, oglimg);
 }
 
 void App::pushMat() {
@@ -271,6 +377,7 @@ void App::popMat() {
 	Model = temp;
 }
 
+//Allow to move the camera with arrow keys and mouse
 void App::computeMatricesFromInputs() {
 	// glfwGetTime is called only once, the first time this function is called
 	static double lastTime = glfwGetTime();
@@ -344,18 +451,22 @@ void App::computeMatricesFromInputs() {
 	lastTime = currentTime;
 }
 
+//Move just a opengl object, not the bullet object
 void App::translate(float x, float y, float z) {
 	Model = glm::translate(Model, vec3(x,y,z));
 }
 
+//rotate opengl object
 void App::rotate(float angle, float x, float y, float z) {
 	Model = glm::rotate(Model, angle, vec3(x,y,z));
 }
 
+//scale opengl object
 void App::scale(float x, float y, float z) {
 	Model = glm::scale(Model, vec3((1.0*x), (1.0*y), (1.0*z)));
 }
 
+//Updates the position of the OpenGL cube based on the position of the bullet object
 void App::updateCube(Cube c) {
 	btTransform trans; //Stores the state (position and orientation) of the falling cube
 	c.getRigidBody()->getMotionState()->getWorldTransform(trans);
@@ -372,6 +483,7 @@ void App::updateCube(Cube c) {
 	Model = rotpos;
 }
 
+//Update the position of the opengl plane, not sure it works though
 void App::updatePlane(Plane p) {
 	btTransform trans; //Stores the state (position and orientation) of the plane
 	p.getRigidBody()->getMotionState()->getWorldTransform(trans);
@@ -405,34 +517,39 @@ void App::updatePosition(Object o) {
 	Model = rotpos;
 }
 
+//Advance the simulation
 void App::step(unsigned long time) {
 	dynamicsWorld->stepSimulation(time, 10);// 1 / 10.f, 10);
 }
 
+//Render and draw the opengl object	
 void App::render(Object o) {
 	MVP = Projection * View * Model;
 	glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-	renderAttrib(0, *o.getVertexBuffer());
-	renderAttrib(1, *o.getColourBuffer());
+	renderAttrib(0, *o.getVertexBuffer(), 3);
+	renderAttrib(1, *o.getColourBuffer(), 3);
 	glDrawArrays(GL_TRIANGLES, 0, o.getNumVertices());
 }
 
+//Initialise bullet
 void App::setupPhysics() {
 	dynamicsWorld->setGravity(btVector3(0, -9.81, 0)); //Set gravity
 }
 
-btRigidBody* Cube::setUpPhysics() {
-	collisionShape = new btBoxShape(btVector3(1.0f, 1.0f, 1.0f));
-	motionState = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 10, 0)));
+//Set up the physics of the cube object 
+btRigidBody* Cube::setUpPhysics(btVector3 pos) {
+	collisionShape = new btBoxShape(btVector3(1.0f, 1.0f, 1.0f)); //A collision shape determines collisions, it has no concept of mass inertia, etc. Many bodies can share a collision shape, but they should be the same shape.
+	motionState = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), pos)); //Initialise the motion state of the cube. This communicates the movement to the system based on the forces exerted on the object.
 	mass = 1; //Give it a mass of 1kg
 	btVector3 fallInertia(0, 0, 0); //Initial inertia
 	collisionShape->calculateLocalInertia(mass, fallInertia); //Calculates the inertia as it falls
 	btRigidBody::btRigidBodyConstructionInfo rigidBodyCI(mass, motionState, collisionShape, fallInertia); //If want to create lots of the bodies with the same parameters, only need to create one of these and pass that info to each body that is made
-	rigidBody = new btRigidBody(rigidBodyCI); //Create rigid body
-	rigidBody->setLinearVelocity(btVector3(0, 0, 0));
+	rigidBody = new btRigidBody(rigidBodyCI); //Create rigid body, the basic building block of all physics simulations. Deformation on the box is negated, no matter how much force is exerted.
+	rigidBody->setLinearVelocity(btVector3(0, 0, 0)); //No initial speed
 	return rigidBody;
 }
 
+//Set up plane physics
 btRigidBody* Plane::setUpPhysics(btVector3 norm, btVector3 pos) {
 	if (norm[0] == 0 && norm[1] == 0 && norm[2] == 0) {
 		norm = btVector3(0, 1, 0);
@@ -450,6 +567,7 @@ void App::addToWorld(btRigidBody* rigidBody) {
 	dynamicsWorld->addRigidBody(rigidBody); //Add to the world
 }
 
+//Set the position of a bullet object
 void App::setPosition(Object o, float x, float y, float z) {
 	btTransform transform;
 	o.getRigidBody()->getMotionState()->getWorldTransform(transform);
@@ -460,16 +578,42 @@ void App::setPosition(Object o, float x, float y, float z) {
 
 }
 
+//Apply a force to a bulllet object.
+//t is the time between current frame and previous frame
+//s values are the 3 directional values
+//force calculated using suvat and acceleration then F = ma
 void App::applyForce(Object o, unsigned long t, float sx, float sy, float sz) {
 	o.getRigidBody()->activate();
 	o.getRigidBody()->setLinearVelocity(btVector3(0, 0, 0)); //Reset any previous forces acing on cube
+	o.getRigidBody()->setAngularVelocity(btVector3(0, 0, 0));
 	btVector3 u = o.getRigidBody()->getLinearVelocity(); //Get the current speed, even though 0 because of previous line
 	float accx = (2 * (sx - u[0] * t)) / (t*t); //Calculate acceleration using simple suvat
 	float accy = (2 * (sy - u[1] * t)) / (t*t);
 	float accz = (2 * (sz - u[2] * t)) / (t*t);
 	btScalar m = o.getMass(); //get the mass
-	float scale = 2; //A value to scale the force by
+	float scale = 3; //A value to scale the force by
 	float gravity = 9.81/scale; //Gravity scaled
-	btVector3 force = scale * btVector3(m*accx, m*(accy+gravity), m*accz); //Calculate the overall force. The posisitve gravity force allows the cube to not fall.
+	float zscale = 2.0; //The amount that the z is scaled by. This allows the user to not have to move as much as can have issues with not being able to move the whole z direction in one go
+	float yscale = 1.0;
+	float xscale = 1.0;
+	btVector3 force = scale * btVector3(m*accx*xscale, m*(accy+gravity)*yscale, m*accz*zscale); //Calculate the overall force. The posisitve gravity force allows the cube to not fall.
 	o.getRigidBody()->applyCentralForce(force);
+}
+
+bool App::menuOpenGesture(deque<int> poses) {
+	bool result = false;
+	int openCounter = 0;
+	int closedCounter = 0;
+	for (int i = 0; i < poses.size(); i++){
+		if (poses[i] == 1 && openCounter == closedCounter) {
+			openCounter++;
+		}
+		else if (poses[i] == 2 && openCounter > closedCounter) {
+			closedCounter++;
+		}
+	}
+	if (openCounter >= 3 && closedCounter >= 3) {
+		result = true;
+	}
+	return result;
 }
