@@ -74,7 +74,7 @@ vector<GLfloat> squareVertices2D = {
 	-10.0f, 10.0f, 0.0f, //top left
 };
 vector<GLfloat> sliderVertices = {
-	/*-10.0f, -10.0f, 0.0f, //bottom left
+	-10.0f, -10.0f, 0.0f, //bottom left
 	-10.0f, 10.0f, 0.0f, //top left
 	10.0f, -10.0f, 0.0f, //bottom right
 
@@ -84,10 +84,10 @@ vector<GLfloat> sliderVertices = {
 
 	-10.0f, 10.0f, 0.0f, //top left
 	10.0f, 10.0f, 0.0f, //top right
-	0.0f, 15.0f, 0.0f, //top middle*/
+	0.0f, 15.0f, 0.0f, //top middle
 	
 
-	-10.0f, -35.0f, 0.0f, //bottom left
+	/*-10.0f, -35.0f, 0.0f, //bottom left
 	-10.0f, -15.0f, 0.0f, //top left
 	10.0f, -35.0f, 0.0f, //bottom right
 
@@ -97,10 +97,11 @@ vector<GLfloat> sliderVertices = {
 
 	-10.0f, -15.0f, 0.0f, //top left
 	10.0f, -15.0f, 0.0f, //top right
-	0.0f, -10.0f, 0.0f, //very top middle
+	0.0f, -10.0f, 0.0f, //very top middle*/
 };
  
 Object::Object() {
+	scaleFactor = 1.0;
 }
 
 Cube::Cube() {
@@ -159,7 +160,7 @@ Slider::Slider() {
 
 bool Slider::isWithin(float x, float y) {
 	bool result = false;
-	if (x < xpos + 10 && x > xpos - 10 && y < ypos + 10 && y > ypos - 10) {
+	if (x < xpos + 10 && x > xpos - 10  && y < ypos-5 && y > ypos - 20) { //-5 +20 from scaling and moving of slider
 		result = true;
 	}
 	return result;
@@ -203,6 +204,20 @@ void Object::setVertices(vector<GLfloat> data) {
 	}
 }
 
+bool Object::within(Object o, float xrange, float yrange) {
+	bool result = false;
+	float xmin = o.getRigidBody()->getCenterOfMassPosition()[0] + xrange; //+- reversed because of opengl coor
+	float xmax = o.getRigidBody()->getCenterOfMassPosition()[0] - xrange;
+	float ymin = o.getRigidBody()->getCenterOfMassPosition()[1] + yrange; //+- reversed because of opengl coor
+	float ymax = o.getRigidBody()->getCenterOfMassPosition()[1] - yrange;
+	float x = rigidBody->getCenterOfMassPosition()[0];
+	float y = rigidBody->getCenterOfMassPosition()[1];
+	if (x < xmin && x > xmax && y < ymin && y > ymax) {
+		result = true;
+	}
+
+	return result;
+}
 
 void App::preprocessing(bool move) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -522,6 +537,10 @@ void App::step(unsigned long time) {
 	dynamicsWorld->stepSimulation(time, 10);// 1 / 10.f, 10);
 }
 
+void App::stepMenu(unsigned long time) {
+	dynamicsWorldMenu->stepSimulation(time, 10);// 1 / 10.f, 10);
+}
+
 //Render and draw the opengl object	
 void App::render(Object o) {
 	MVP = Projection * View * Model;
@@ -534,6 +553,7 @@ void App::render(Object o) {
 //Initialise bullet
 void App::setupPhysics() {
 	dynamicsWorld->setGravity(btVector3(0, -9.81, 0)); //Set gravity
+	dynamicsWorldMenu->setGravity(btVector3(0, 0, 0));
 }
 
 //Set up the physics of the cube object 
@@ -563,8 +583,48 @@ btRigidBody* Plane::setUpPhysics(btVector3 norm, btVector3 pos) {
 	return rigidBody;
 }
 
+btRigidBody* Slider::setUpPhysics(btVector3 pos) {
+	collisionShape = new btBoxShape(btVector3(1.0f, 1.0f, 1.0f)); //A collision shape determines collisions, it has no concept of mass inertia, etc. Many bodies can share a collision shape, but they should be the same shape.
+	motionState = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), pos)); //Initialise the motion state of the cube. This communicates the movement to the system based on the forces exerted on the object.
+	mass = 1; //Give it a mass of 1kg
+	btVector3 fallInertia(0, 0, 0); //Initial inertia
+	collisionShape->calculateLocalInertia(mass, fallInertia); //Calculates the inertia as it falls
+	btRigidBody::btRigidBodyConstructionInfo rigidBodyCI(mass, motionState, collisionShape, fallInertia); //If want to create lots of the bodies with the same parameters, only need to create one of these and pass that info to each body that is made
+	rigidBody = new btRigidBody(rigidBodyCI); //Create rigid body, the basic building block of all physics simulations. Deformation on the box is negated, no matter how much force is exerted.
+	rigidBody->setLinearVelocity(btVector3(0, 0, 0)); //No initial speed
+	return rigidBody;
+}
+
+btRigidBody* Cursor::setUpPhysics(btVector3 pos) {
+	collisionShape = new btBoxShape(btVector3(0.05f, 0.05f, 1.0f)); //A collision shape determines collisions, it has no concept of mass inertia, etc. Many bodies can share a collision shape, but they should be the same shape.
+	motionState = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), pos)); //Initialise the motion state of the cube. This communicates the movement to the system based on the forces exerted on the object.
+	mass = 1; //Give it a mass of 1kg
+	btVector3 fallInertia(0, 0, 0); //Initial inertia
+	collisionShape->calculateLocalInertia(mass, fallInertia); //Calculates the inertia as it falls
+	btRigidBody::btRigidBodyConstructionInfo rigidBodyCI(mass, motionState, collisionShape, fallInertia); //If want to create lots of the bodies with the same parameters, only need to create one of these and pass that info to each body that is made
+	rigidBody = new btRigidBody(rigidBodyCI); //Create rigid body, the basic building block of all physics simulations. Deformation on the box is negated, no matter how much force is exerted.
+	rigidBody->setLinearVelocity(btVector3(0, 0, 0)); //No initial speed
+	return rigidBody;
+}
+
+btRigidBody* Trackbar::setUpPhysics(btVector3 pos) {
+	collisionShape = new btBoxShape(btVector3(10.0f, 2.0f, 1.0f)); //The shape hear doesnt actually have any impact on the bhaviour, since the bullet things are only used to keep a position relative to everything else
+	motionState = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), pos)); 
+	mass = 1; 
+	btVector3 fallInertia(0, 0, 0);
+	collisionShape->calculateLocalInertia(mass, fallInertia); 
+	btRigidBody::btRigidBodyConstructionInfo rigidBodyCI(mass, motionState, collisionShape, fallInertia); 
+	rigidBody = new btRigidBody(rigidBodyCI);
+	rigidBody->setLinearVelocity(btVector3(0, 0, 0)); 
+	return rigidBody;
+}
+
 void App::addToWorld(btRigidBody* rigidBody) {
 	dynamicsWorld->addRigidBody(rigidBody); //Add to the world
+}
+
+void App::addToMenuWorld(btRigidBody* rigidBody) {
+	dynamicsWorldMenu->addRigidBody(rigidBody); //Add to the world
 }
 
 //Set the position of a bullet object

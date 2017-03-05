@@ -34,6 +34,9 @@ public:
 	btScalar getMass() { return mass; };
 	std::string getID() { return id; };
 	void setVertices(std::vector<GLfloat> data);
+	bool within(Object o, float xrange, float yrange);
+	void setScaleFactor(float sf) { scaleFactor = sf; };
+	float getScaleFactor() { return scaleFactor; };
 protected:
 	Object();
 	int numVertexAttributes;
@@ -49,6 +52,7 @@ protected:
 	btScalar mass;
 
 	std::string id;
+	float scaleFactor;
 };
 
 class Cube : public Object {
@@ -78,28 +82,40 @@ public:
 class Trackbar : public Object {
 public:
 	Trackbar();
+	btRigidBody* setUpPhysics(btVector3 pos);
 	//void setVertices();
 };
 
 class Cursor : public Object {
 public:
 	Cursor();
+	btRigidBody* setUpPhysics(btVector3 pos);
 	//void setVertices();
 };
 
 class Slider : public Object {
 public:
 	Slider();
-	void setValue(int val) { value = val; };
+	void setValue(float val) { value = val; };
+	float getValue() { return value; };
 	float getXPos() { return xpos; };
 	float getYPos() { return ypos; };
 	void setX(float x) { xpos = x; };
+	void setMinX(float x) { minX = x; };
+	void setMaxX(float x) { maxX = x; };
+	float getMinX() { return minX; };
+	float getMaxX() { return maxX; };
 	void setY(float y) { ypos = y; };
 	bool isWithin(float x, float y);
+	btRigidBody* setUpPhysics(btVector3 pos);
 private:
 	float xpos;
 	float ypos;
-	int value = 5;
+	float value = 1.0;
+	float minValue = 0.1;
+	float maxValue = 5.0;
+	float minX;
+	float maxX;
 };
 
 class App {
@@ -119,11 +135,13 @@ public:
 	void setCamera(float x, float y, float z) { position = glm::vec3(x, y, z); };
 	void setupPhysics();
 	void addToWorld(btRigidBody* rigidBody);
+	void addToMenuWorld(btRigidBody* rigidBody);
 	void updateCube(Cube c);
 	void updatePlane(Plane p);
 	void updatePosition(Object o);
 	void setPosition(Object o, float x, float y, float z);
 	void step(unsigned long time);
+	void stepMenu(unsigned long time);
 	void applyForce(Object o, unsigned long time, float sx, float sy, float sz);
 	int getWidth() { return width; };
 	int getHeight() { return height; };
@@ -132,15 +150,20 @@ public:
 	void setP(glm::mat4 mat) { Projection = mat; };
 	glm::mat4 getP() { return Projection; };
 	bool menuOpenGesture(std::deque<int> poses);
+	float getGravity() { return dynamicsWorldMenu->getGravity()[1]; };
 private:
 	btBroadphaseInterface* broadphase = new btDbvtBroadphase(); //Decide on the Broadphase algorithm - uses the bounding boxes of objects in the world to quickly compute a conservative approximate list of colliding pairs
 	btDefaultCollisionConfiguration* collisionConfiguration = new btDefaultCollisionConfiguration(); //allows configuration of Bullet collision stack allocator and pool memory allocators
 	btCollisionDispatcher* dispatcher = new btCollisionDispatcher(collisionConfiguration);
-
 	btSequentialImpulseConstraintSolver* solver = new btSequentialImpulseConstraintSolver; //Solver - causes the objects to intersct properly, taking into account gravity, game logic supplied force, collisions, and hinge constraints
-
 	btDiscreteDynamicsWorld* dynamicsWorld = new btDiscreteDynamicsWorld(dispatcher, broadphase, solver, collisionConfiguration); //Instantiate dynamics world
 	
+	btBroadphaseInterface* broadphaseMenu = new btDbvtBroadphase(); //Decide on the Broadphase algorithm - uses the bounding boxes of objects in the world to quickly compute a conservative approximate list of colliding pairs
+	btDefaultCollisionConfiguration* collisionConfigurationMenu = new btDefaultCollisionConfiguration(); //allows configuration of Bullet collision stack allocator and pool memory allocators
+	btCollisionDispatcher* dispatcherMenu = new btCollisionDispatcher(collisionConfigurationMenu);
+	btSequentialImpulseConstraintSolver* solverMenu = new btSequentialImpulseConstraintSolver; //Solver - causes the objects to intersct properly, taking into account gravity, game logic supplied force, collisions, and hinge constraints
+	btDiscreteDynamicsWorld* dynamicsWorldMenu = new btDiscreteDynamicsWorld(dispatcherMenu, broadphaseMenu, solverMenu, collisionConfigurationMenu); //Instantiate dynamics world
+
 
 	GLuint programID;
 	GLuint MatrixID;

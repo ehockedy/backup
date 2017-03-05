@@ -29,7 +29,7 @@ using namespace glm;
 bool run = true; //whether program continues to run
 bool draw = true; //whether to output the opencv processed images
 bool twoHands = false; //whether accomodates for 2 hands
-int checkstep = 2;
+int checkstep = 1;
 bool freemove = false; //whether can move freely around the environment
 int ksize = 45;
 int sigma = 100;
@@ -82,18 +82,27 @@ void main()
 
 	Menu2D menuBackground;
 	Trackbar tbar1;
+	a.addToMenuWorld(tbar1.setUpPhysics(btVector3(-70, 30, 2)));
 	Trackbar tbar2;
+	a.addToMenuWorld(tbar2.setUpPhysics(btVector3(-70, -10, 2)));
+
 	Cursor cursor;
+	a.addToMenuWorld(cursor.setUpPhysics(btVector3(0, 5, 2)));
 	Cursor fingertipCursor;
 	fingertipCursor.setColour(1, 0, 0);
 	fingertipCursor.doBuffers();
 
 	Slider slider1;
-	slider1.setX(-a.getWidth()*0.05 + 40);
-	slider1.setY(a.getHeight()*0.05);
+	a.addToMenuWorld(slider1.setUpPhysics(btVector3(-25, 10, 0)));
+	Slider slider2;
+	a.addToMenuWorld(slider2.setUpPhysics(btVector3(-25, -30, 0)));
+	/*slider1.setX(-a.getWidth()*0.05 + 0);//0
+	slider1.setMinX(slider1.getXPos() + 20); //+ because left is positive in this instance of opengl.
+	slider1.setMinX(slider1.getXPos() - 20);
+	slider1.setY(a.getHeight()*0.05);*/
 
 	Plane plane1;
-	a.addToWorld(plane1.setUpPhysics(btVector3(0,1,0), btVector3(0,-1,0)));
+	a.addToWorld(plane1.setUpPhysics(btVector3(0,1,0), btVector3(0,-1,0)));///y=-1
 	plane1.setColour(0.5, 0, 0.5);
 	plane1.doBuffers();
 
@@ -123,7 +132,13 @@ void main()
 	
 	while (run && a.continueProcessing())
 	{
-		a.step(GetTickCount() - stepTime);
+		/*if (menuOpen) {
+			a.stepMenu(GetTickCount() - stepTime);
+		}
+		else {
+			a.step(GetTickCount() - stepTime);
+		}*/
+		
 		stepTime = GetTickCount();
 
 		cdepth.Update(); //Fills in depthArr
@@ -140,77 +155,92 @@ void main()
 		
 		int pose = ml.Predict(hand1hull, hand1); //Predict the pose
 
-		/*if (draw)
+		if (draw)
 		{
 			cdepth.DrawClassification(pose);
-			cdepth.Draw(2);
-		}*/
+			//cdepth.Draw(2);
+		}
 
 		a.preprocessing(freemove);
+		if (menuOpen == false) {
+			if (pose == 1) {
+				cube1.setColour(1, 0, 0);
+			}
+			else if (pose == 2) {
+				cube1.setColour(0, 1, 0);
+			}
+			else if (pose == 3) {
+				cube1.setColour(0, 0, 1);
+			}
+			else {
+				cube1.setColour(0, 0, 0);
+			}
 
-		if (pose == 1) {
-			cube1.setColour(1, 0, 0);
-		}
-		else if (pose == 2)		{
-			cube1.setColour(0, 1, 0);
-		}
-		else if (pose == 3) {
-			cube1.setColour(0, 0, 1);
-		}
-		else {
-			cube1.setColour(0, 0, 0);
-		}
+			cube1.doBuffers();
 
-		cube1.doBuffers();
-
-		a.pushMat();
+			a.pushMat();
 			if (pose == 2) { //Grabbing the cube
 				a.applyForce(cube1, GetTickCount() - stepTime, (prevHand1.xpos - hand1.xpos) * 1000, (prevHand1.ypos - hand1.ypos) * 1000, (hand1.depth - prevHand1.depth) * 1000);
 			}
-			else if (poses.back() == 2 &&  abs(hand1.depth - prevHand1.depth) < 10 && abs(hand1.xpos - prevHand1.xpos) + abs(hand1.ypos - prevHand1.ypos)  < 10) { // because can fly off a little if opening hand due to movement of central point and change of depth
+			else if (poses.back() == 2 && abs(hand1.depth - prevHand1.depth) < 10 && abs(hand1.xpos - prevHand1.xpos) + abs(hand1.ypos - prevHand1.ypos) < 10) { // because can fly off a little if opening hand due to movement of central point and change of depth
 				cube1.getRigidBody()->setLinearVelocity(btVector3(0, 0, 0));
 			}
-			a.updateCube(cube1);
-			a.render(cube1);
-		a.popMat();
 
-		a.pushMat();
+			
+
+			a.updateCube(cube1);
+			a.scale(cube1.getScaleFactor(), cube1.getScaleFactor(), cube1.getScaleFactor()); //If double cube size, scale double as well, but after updated cube
+			a.render(cube1);
+			a.popMat();
+
+			a.pushMat();
 			a.updateCube(stillCube);
 			a.render(stillCube);
-		a.popMat();
+			a.popMat();
+		}
 
-		a.pushMat();
+		//Always render the room
+			a.pushMat();
 			a.scale(10, 10, 10);
 			a.render(plane1);
-		a.popMat();
+			a.popMat();
 
-		a.pushMat();
+			a.pushMat();
 			a.translate(rightWall.getRigidBody()->getCenterOfMassPosition()[0], rightWall.getRigidBody()->getCenterOfMassPosition()[1], rightWall.getRigidBody()->getCenterOfMassPosition()[2]);
-			a.rotate(3.14159/2, 0, 0, 1);
+			a.rotate(3.14159 / 2, 0, 0, 1);
 			a.scale(10, 10, 10);
 			a.render(rightWall);
-		a.popMat();
+			a.popMat();
 
-		a.pushMat(); //remove these, change actual vertex data at start
+			a.pushMat(); //remove these, change actual vertex data at start
 			a.translate(leftWall.getRigidBody()->getCenterOfMassPosition()[0], leftWall.getRigidBody()->getCenterOfMassPosition()[1], leftWall.getRigidBody()->getCenterOfMassPosition()[2]);
 			a.rotate(3.14159 / 2, 0, 0, 1);
 			a.scale(10, 10, 10);
 			a.render(leftWall);
-		a.popMat();
+			a.popMat();
 
-		a.pushMat();
+			a.pushMat();
 			a.translate(backWall.getRigidBody()->getCenterOfMassPosition()[0], backWall.getRigidBody()->getCenterOfMassPosition()[1], backWall.getRigidBody()->getCenterOfMassPosition()[2]);
 			a.rotate(3.14159 / 2, 1, 0, 0);
 			a.scale(10, 10, 10);
 			a.render(backWall);
-		a.popMat();
-
+			a.popMat();
+		
 		if (menuOpen == true) { //stay open
-			mat4 p = a.getP();
+			mat4 p = a.getP(); //orthographic projection for menu
 			double width = a.getWidth();
 			double height = a.getHeight();
+			float cursorx = -(float)fingertip1.x;
+			float cursory = -(float)fingertip1.y;
+			float cursorxhand = -(float)hand1.xpos;
+			float cursoryhand = -(float)hand1.ypos;
+			float maxy = cdepth.getHeight();
+			float maxx = cdepth.getWidth();
+			float globalFingerX = (cursorxhand + maxx / 2 + (cursorx - cursorxhand) / 5) / 1.5;
+			float globalFingerY = (cursoryhand + maxy / 2 + (cursory - cursoryhand) / 5) / 2.0;
 			a.setP(ortho(-width*0.1, width*0.1, -height*0.1, height*0.1, 0.0, 50.0)); //must be doubles or floats, smaller values give bigger square
 			glDisable(GL_DEPTH_TEST);
+
 
 			//background
 			a.pushMat();
@@ -220,54 +250,74 @@ void main()
 
 			//trackbar 1
 			a.pushMat();
-				a.translate(-width*0.05, height*0.05, 0);
+				a.updatePosition(tbar1); //go from bullet to opengl
 				a.scale(5, 0.5, 0);
-				a.render(tbar1);
-			a.popMat();
-
-			float cursorx = -(float)fingertip1.x;
-			float cursory = -(float)fingertip1.y;
-			float cursorxhand = -(float)hand1.xpos;
-			float cursoryhand = -(float)hand1.ypos;
-			float maxy = cdepth.getHeight();
-			float maxx = cdepth.getWidth();
-			float globalFingerX = (cursorxhand + maxx / 2 + (cursorx - cursorxhand) / 5) / 1.5;
-			float globalFingerY = (cursoryhand + maxy / 2 + (cursory - cursoryhand) / 5) / 2.0;
-			//slider 1
-			a.pushMat();
-				//+40 and +5 (not there if y size halved) come from the width of tbar scaled
-				a.translate(slider1.getXPos(), height*0.05, 0); //move to starting position
-				if (pose == 3 && slider1.isWithin(globalFingerX, globalFingerY)) {
-					a.translate(-(slider1.getXPos()),0 , 0); //reset to original position
-					a.translate(globalFingerX, 0, 0);
-					slider1.setX(globalFingerX);
-				}
-				a.scale(0.4, 0.5, 0);
-				a.render(slider1);
+				a.render(tbar1); //draw
 			a.popMat();
 
 			//trackbar 2
 			a.pushMat();
-				a.translate(-width*0.05, -height*0.01, 0);
+				a.updatePosition(tbar2); //go from bullet to opengl
 				a.scale(5, 0.5, 0);
-				a.render(tbar2);
+				a.render(tbar2); //draw
+			a.popMat();
+					
+			//position of cursor
+			a.setPosition(cursor, (float)(cursorxhand + maxx / 2), (float)(cursoryhand + maxy / 2), 0);
+
+			//move slider1
+			a.pushMat();
+				if (pose == 3 && cursor.within(slider1, 15, 10) && cursor.within(tbar1,50,100)) { //move slider with finger. 100 is big enough to make sure whole slider covered, but is really irrelevant as this is just checking if slider is within x range of trackbar.
+					a.setPosition(slider1, cursor.getRigidBody()->getCenterOfMassPosition()[0], slider1.getRigidBody()->getCenterOfMassPosition()[1], 0);
+					slider1.setValue((abs(slider1.getRigidBody()->getCenterOfMassPosition()[0])-20)/2);
+				
+					btCollisionShape* shape = new btBoxShape(btVector3(1.0f*slider1.getValue()/10.0, 1.0f * slider1.getValue()/10.0, 1.0f * slider1.getValue()/10.0));
+					cube1.getRigidBody()->setCollisionShape(shape);
+					a.setPosition(cube1, 0, 20, 0);
+					cube1.setScaleFactor(slider1.getValue() / 10.0);
+					//cube1.getRigidBody()->setMassProps(5.0f, btVector3(0.0, 0.0, 0.0));
+				
+				}
+				a.updatePosition(slider1);
+				a.render(slider1);
 			a.popMat();
 
-			//main cursor
+			//move slider2
 			a.pushMat();
-				a.translate((cursorxhand+maxx/2)/1.5, (cursoryhand+maxy/2)/2.0, 0);
-				a.scale(0.2, 0.2, 0);
+				if (pose == 3 && cursor.within(slider2, 15, 10) && cursor.within(tbar2, 50, 100)) { //move slider with finger. 100 is big enough to make sure whole slider covered, but is really irrelevant as this is just checking if slider is within x range of trackbar.
+					a.setPosition(slider2, cursor.getRigidBody()->getCenterOfMassPosition()[0], slider2.getRigidBody()->getCenterOfMassPosition()[1], 0);
+					slider2.setValue((abs(slider2.getRigidBody()->getCenterOfMassPosition()[0]) - 20) / 2);
+
+					cube1.getRigidBody()->setMassProps(1.0f*slider2.getValue() / 10.0, btVector3(0.0, 0.0, 0.0));
+					a.setPosition(cube1, 0, 20, 0);
+				}
+				a.updatePosition(slider2);
+				a.render(slider2);
+			a.popMat();
+
+			if (pose == 3) {
+				cursor.setColour(1, 0, 0);
+				cursor.doBuffers();
+			}
+			else {
+				cursor.setColour(0.5, 0.5, 0.5);
+				cursor.doBuffers();
+			}
+			a.pushMat();
+				a.updatePosition(cursor);
+				//a.scale(0.05, 0.05, 0);
+				a.scale(0.2, 0.2, 0.2);
 				a.render(cursor);
 			a.popMat();
 
 			//finger cursor
-			if (pose == 3) {
+			/*if (pose == 3) {
 				a.pushMat();
 					a.translate(globalFingerX, globalFingerY, 0); //scale so finger tip appears closer
 					a.scale(0.1, 0.1, 0);
 					a.render(fingertipCursor);
 				a.popMat();
-			}
+			}*/
 
 			glEnable(GL_DEPTH_TEST);
 			a.setP(p);
@@ -299,6 +349,12 @@ void main()
 		//display output
 		a.outputImage(outputImageName, cdepth.Draw(2));
 
+		if (menuOpen) {
+			a.stepMenu(GetTickCount() - stepTime);
+		}
+		else {
+			a.step(GetTickCount() - stepTime);
+		}
 
 		int key = waitKey((int)(1000 / fps));
 		/*if (key == 'z')
