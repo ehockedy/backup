@@ -25,6 +25,7 @@ public:
 	void doBuffers();
 	GLuint* getVertexBuffer(){ return &vertexBuffer; }
 	GLuint* getColourBuffer(){ return &colourBuffer; }
+	GLuint* getNormalBuffer() { return &normalBuffer; }
 	std::vector<GLfloat> getVertexData() { return vertices; }
 	std::vector<GLfloat> getColourData() { return colours; }
 	int getNumVertices() { return numVertices; }
@@ -34,17 +35,25 @@ public:
 	btScalar getMass() { return mass; };
 	std::string getID() { return id; };
 	void setVertices(std::vector<GLfloat> data);
+	void setNormals(std::vector<GLfloat> data);
 	bool within(Object o, float xrange, float yrange);
+	bool within(Object o, float xrange, float yrange, float zrange);
 	void setScaleFactor(float sf) { scaleFactor = sf; };
 	float getScaleFactor() { return scaleFactor; };
+	void setXYZ(float x, float y, float z) { xpos = x; ypos = y; zpos = z; };
+	float xpos;
+	float ypos;
+	float zpos;
 protected:
 	Object();
 	int numVertexAttributes;
 	int numVertices;
 	std::vector<GLfloat> vertices;
 	std::vector<GLfloat> colours;
+	std::vector<GLfloat> normals;
 	GLuint vertexBuffer;
 	GLuint colourBuffer;
+	GLuint normalBuffer;
 
 	btCollisionShape* collisionShape; 
 	btDefaultMotionState* motionState;
@@ -91,6 +100,11 @@ public:
 	Cursor();
 	btRigidBody* setUpPhysics(btVector3 pos);
 	//void setVertices();
+	bool setXYZ(float x, float y, float z) { xpos = x; ypos = y; zpos = z; };
+private:
+	float xpos;
+	float ypos;
+	float zpos;
 };
 
 class Slider : public Object {
@@ -111,6 +125,7 @@ public:
 private:
 	float xpos;
 	float ypos;
+	float zpos;
 	float value = 1.0;
 	float minValue = 0.1;
 	float maxValue = 5.0;
@@ -151,6 +166,7 @@ public:
 	glm::mat4 getP() { return Projection; };
 	bool menuOpenGesture(std::deque<int> poses);
 	float getGravity() { return dynamicsWorldMenu->getGravity()[1]; };
+	void setOglimg(cv::Mat img) { oglimg = img; };
 private:
 	btBroadphaseInterface* broadphase = new btDbvtBroadphase(); //Decide on the Broadphase algorithm - uses the bounding boxes of objects in the world to quickly compute a conservative approximate list of colliding pairs
 	btDefaultCollisionConfiguration* collisionConfiguration = new btDefaultCollisionConfiguration(); //allows configuration of Bullet collision stack allocator and pool memory allocators
@@ -180,6 +196,10 @@ private:
 
 	glm::mat4 cubeModel;
 	glm::mat4 cubeMVP;
+
+	GLuint LightID;
+	GLuint ViewMatrixID;
+	GLuint ModelMatrixID;
 
 	std::stack<glm::mat4> modelViewStack;
 

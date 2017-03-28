@@ -6,6 +6,11 @@ using namespace std;
 using namespace glm;
 using namespace cv;
 
+struct Light {
+	glm::vec3 position;
+	glm::vec3 intensities; //a.k.a. the color of the light
+};
+
 vector<GLfloat> cubeVertices = {
 	-1.0f, -1.0f, -1.0f, // triangle 1 
 	-1.0f, -1.0f, 1.0f,
@@ -55,6 +60,57 @@ vector<GLfloat> cubeVertices = {
 	-1.0f, 1.0f, 1.0f,
 	1.0f, -1.0f, 1.0f
 };
+
+vector<GLfloat> cubeNormals = {
+	-1.0f, 0.0f, 0.0f,
+	-1.0f, 0.0f, 0.0f,
+	-1.0f, 0.0f, 0.0f,
+
+	0.0f, 0.0f, -1.0f,
+	0.0f, 0.0f, -1.0f,
+	0.0f, 0.0f, -1.0f,
+	
+	0.0f, -1.0f, 0.0f,
+	0.0f, -1.0f, 0.0f,
+	0.0f, -1.0f, 0.0f,
+	
+	0.0f, 0.0f, -1.0f,
+	0.0f, 0.0f, -1.0f,
+	0.0f, 0.0f, -1.0f,
+	
+	-1.0f, 0.0f, 0.0f,
+	-1.0f, 0.0f, 0.0f,
+	-1.0f, 0.0f, 0.0f,
+
+	0.0f, -1.0f, 0.0f,
+	0.0f, -1.0f, 0.0f,
+	0.0f, -1.0f, 0.0f,
+	
+	0.0f, 0.0f, 1.0f,
+	0.0f, 0.0f, 1.0f,
+	0.0f, 0.0f, 1.0f,
+	
+	1.0f, 0.0f, 0.0f,
+	1.0f, 0.0f, 0.0f,
+	1.0f, 0.0f, 0.0f,
+
+	1.0f, 0.0f, 0.0f,
+	1.0f, 0.0f, 0.0f,
+	1.0f, 0.0f, 0.0f,
+	
+	0.0f, 1.0f, 0.0f,
+	0.0f, 1.0f, 0.0f,
+	0.0f, 1.0f, 0.0f,
+
+	0.0f, 1.0f, 0.0f,
+	0.0f, 1.0f, 0.0f,
+	0.0f, 1.0f, 0.0f,
+
+	0.0f, 0.0f, 1.0f,
+	0.0f, 0.0f, 1.0f,
+	0.0f, 0.0f, 1.0f
+};
+
 vector<GLfloat> squareVertices = {
 	-10.0f, 0.0f, -10.0f, //back left
 	-10.0f, 0.0f, 10.0f, //front left
@@ -64,6 +120,17 @@ vector<GLfloat> squareVertices = {
 	10.0f, 0.0f, 10.0f, //front right
 	-10.0f, 0.0f, 10.0f, //front left
 };
+
+vector<GLfloat> squareNormals = {
+	0.0f, 1.0f, 0.0f,
+	0.0f, 1.0f, 0.0f,
+	0.0f, 1.0f, 0.0f,
+	0.0f, 1.0f, 0.0f,
+	0.0f, 1.0f, 0.0f,
+	0.0f, 1.0f, 0.0f,
+	0.0f, 1.0f, 0.0f,
+};
+
 vector<GLfloat> squareVertices2D = {
 	-10.0f, -10.0f, 0.0f, //bottom left
 	-10.0f, 10.0f, 0.0f, //top left
@@ -73,6 +140,21 @@ vector<GLfloat> squareVertices2D = {
 	10.0f, 10.0f, 0.0f, //top right
 	-10.0f, 10.0f, 0.0f, //top left
 };
+
+vector<GLfloat> sliderNormals = {
+	0.0f, 0.0f, 1.0f,
+	0.0f, 0.0f, 1.0f,
+	0.0f, 0.0f, 1.0f,
+
+	0.0f, 0.0f, 1.0f,
+	0.0f, 0.0f, 1.0f,
+	0.0f, 0.0f, 1.0f,
+
+	0.0f, 0.0f, 1.0f,
+	0.0f, 0.0f, 1.0f,
+	0.0f, 0.0f, 1.0f,
+};
+
 vector<GLfloat> sliderVertices = {
 	-10.0f, -10.0f, 0.0f, //bottom left
 	-10.0f, 10.0f, 0.0f, //top left
@@ -108,6 +190,7 @@ Cube::Cube() {
 	numVertexAttributes = 9 * 12;
 	numVertices = 3 * 12;
 	setVertices(cubeVertices);
+	setNormals(cubeNormals);
 	setColour(1, 0, 0);
 	doBuffers();
 	id = "cube";
@@ -118,6 +201,7 @@ Plane::Plane() { //infinte plane
 	numVertexAttributes = 2 * 3 * 3;
 	numVertices = 2 * 3;
 	setVertices(squareVertices);
+	setNormals(squareNormals);
 	setColour(0, 1, 0);
 	doBuffers();
 }
@@ -127,6 +211,7 @@ Menu2D::Menu2D() {
 	numVertexAttributes = 2 * 3 * 3;
 	numVertices = 2 * 3;
 	setVertices(squareVertices2D);
+	setNormals(squareNormals);
 	setColour(1, 1, 1);
 	doBuffers();
 }
@@ -136,7 +221,8 @@ Trackbar::Trackbar() {
 	numVertexAttributes = 2 * 3 * 3;
 	numVertices = 2 * 3;
 	setVertices(squareVertices2D);
-	setColour(0, 0, 0);
+	setNormals(squareNormals);
+	setColour(1, 1, 1); //0, 0, 0
 	doBuffers();
 }
 
@@ -145,7 +231,8 @@ Cursor::Cursor() {
 	numVertexAttributes = 2 * 3 * 3;
 	numVertices = 2 * 3;
 	setVertices(squareVertices2D);
-	setColour(0.5, 0.5, 0.5);
+	setNormals(squareNormals);
+	setColour(0.1, 0.1, 0.1);
 	doBuffers();
 }
 
@@ -154,7 +241,8 @@ Slider::Slider() {
 	numVertexAttributes = 3 * 3 * 3;
 	numVertices = 3 * 3;
 	setVertices(sliderVertices);
-	setColour(0.8, 0.8, 0.8);
+	setNormals(sliderNormals);
+	setColour(0.8, 0.8, 0.8);//
 	doBuffers();
 }
 
@@ -185,6 +273,15 @@ void Object::doBuffers() {
 	glGenBuffers(1, &colourBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, colourBuffer);
 	glBufferData(GL_ARRAY_BUFFER, colours.size() * sizeof(GLfloat), &colours[0], GL_STATIC_DRAW);
+
+
+
+	//lighting
+	glGenBuffers(1, &normalBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
+	glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(GLfloat), &normals[0], GL_STATIC_DRAW);
+
+	
 }
 
 void Object::setColour(GLfloat r, GLfloat g, GLfloat b) {
@@ -204,6 +301,13 @@ void Object::setVertices(vector<GLfloat> data) {
 	}
 }
 
+void Object::setNormals(vector<GLfloat> data) {
+	for (int i = 0; i < numVertexAttributes; i++)
+	{
+		normals.push_back(data[i]);
+	}
+}
+
 bool Object::within(Object o, float xrange, float yrange) {
 	bool result = false;
 	float xmin = o.getRigidBody()->getCenterOfMassPosition()[0] + xrange; //+- reversed because of opengl coor
@@ -216,6 +320,20 @@ bool Object::within(Object o, float xrange, float yrange) {
 		result = true;
 	}
 
+	return result;
+}
+
+bool Object::within(Object o, float xrange, float yrange, float zrange) {
+	bool result = false;
+	float xmin = o.getRigidBody()->getCenterOfMassPosition()[0] - xrange; 
+	float xmax = o.getRigidBody()->getCenterOfMassPosition()[0] + xrange;
+	float ymin = o.getRigidBody()->getCenterOfMassPosition()[1] - yrange; 
+	float ymax = o.getRigidBody()->getCenterOfMassPosition()[1] + yrange;
+	float zmin = o.getRigidBody()->getCenterOfMassPosition()[2] - zrange;
+	float zmax = o.getRigidBody()->getCenterOfMassPosition()[2] + zrange;
+	if (xpos > xmin && xpos < xmax && ypos > ymin && ypos < ymax && zpos > zmin && zpos < zmax) {
+		result = true;
+	}
 	return result;
 }
 
@@ -297,6 +415,9 @@ void App::setupView() {
 									/////////
 	MatrixID = glGetUniformLocation(programID, "MVP");
 	//GLuint cubeMatrixID = glGetUniformLocation(programID, "cubeMVP");
+	
+	ViewMatrixID = glGetUniformLocation(programID, "V");//light
+	ModelMatrixID = glGetUniformLocation(programID, "M");//light
 
 	//PROJECTION matrix
 	//Applies perspective to the scene i.e. objects further away appear smaller than objects that are closer
@@ -325,6 +446,35 @@ void App::setupView() {
 
 	//MODEL VIEW PROJECTION matrix
 	MVP = Projection * View * Model; //Remember matrix multiplication applies transformations from right to left
+
+	//lighting
+	/*GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
+	GLfloat mat_shininess[] = { 50.0 };
+	GLfloat light_position[] = { 1.0, 1.0, 1.0, 0.0 };
+	glClearColor(0.0, 0.0, 0.0, 0.0);
+	glShadeModel(GL_SMOOTH);
+
+	glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
+	glMaterialfv(GL_FRONT, GL_SHININESS, mat_shininess);
+	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+
+	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT0);
+	glEnable(GL_DEPTH_TEST);*/
+
+	//Light gLight;
+	
+	glUseProgram(programID);
+	LightID = glGetUniformLocation(programID, "LightPosition_worldspace");
+
+	glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+	glUniformMatrix4fv(ModelMatrixID, 1, GL_FALSE, &Model[0][0]);
+	glUniformMatrix4fv(ViewMatrixID, 1, GL_FALSE, &View[0][0]);
+
+	glm::vec3 lightPos = glm::vec3(0, 10, -5);
+	glUniform3f(LightID, lightPos.x, lightPos.y, lightPos.z);
+	
+
 }
 
 bool App::continueProcessing() {
@@ -345,7 +495,16 @@ void App::renderAttrib(int attrib, GLuint buffer, int numAtt) {
 		0,                  // Byte offset between consecutive generic vertex attributes. If stride​ is 0, the generic vertex attributes are understood to be tightly packed in the array
 		(void*)0            // Specifies a offset of the first component of the first generic vertex attribute in the array in the data store of the buffer currently bound to the GL_ARRAY_BUFFER target.
 	);
+
+	//lighting
+	/*glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+	glUniformMatrix4fv(ModelMatrixID, 1, GL_FALSE, &Model[0][0]);
+	glUniformMatrix4fv(ViewMatrixID, 1, GL_FALSE, &View[0][0]);
+
+	glm::vec3 lightPos = glm::vec3(4, 4, 4);
+	glUniform3f(LightID, lightPos.x, lightPos.y, lightPos.z);*/
 }
+
 
 //Takes the openGL output and displays it in an openCV window
 void App::outputImage(string name, Mat handsImg) {
@@ -354,7 +513,7 @@ void App::outputImage(string name, Mat handsImg) {
 	//set length of one complete row in destination data (doesn't need to equal img.cols)
 	//glPixelStorei(GL_PACK_ROW_LENGTH, oglimg.step / oglimg.elemSize());
 
-	glReadPixels(0, 0, oglimg.cols, oglimg.rows, GL_BGR, GL_UNSIGNED_BYTE, oglimg.data);
+	//glReadPixels(0, 0, oglimg.cols, oglimg.rows, GL_BGR, GL_UNSIGNED_BYTE, oglimg.data);
 	Mat finalImg(height, width+200, CV_8UC3); //change this if change any image dimensions
 	flip(oglimg, finalImg, 0);
 	handsImg.copyTo(finalImg(Rect(finalImg.cols - handsImg.cols, finalImg.rows - handsImg.rows, handsImg.cols, handsImg.rows)));
@@ -489,13 +648,25 @@ void App::updateCube(Cube c) {
 	
 	btScalar m[16];
 	trans.getOpenGLMatrix(m);
+	//btQuaternion r = trans.getRotation();
+	//rotate(r.getAngle(), r.getAxis()[0], r.getAxis()[1], r.getAxis()[2]);
 
 	mat4 rotpos = mat4({ m[0], m[1], m[2], m[3],
 		m[4], m[5], m[6], m[7],
 		m[8], m[9], m[10], m[11],
 		m[12], m[13], m[14], m[15] });
-	//cout << m[0] << " " << m[1] << " " << m[5] << endl;
+	//cout << m[12] << " " << m[13] << " " << m[14] << " " << m[15] << endl;
 	Model = rotpos;
+
+	mat4 rotNormal = transpose(inverse(Model));
+	vector<GLfloat> rN;
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			rN.push_back(rotNormal[i][j]);
+		}
+	}
+	//c.setNormals(rN);
+	//c.getNormalBuffer()
 }
 
 //Update the position of the opengl plane, not sure it works though
@@ -547,6 +718,7 @@ void App::render(Object o) {
 	glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 	renderAttrib(0, *o.getVertexBuffer(), 3);
 	renderAttrib(1, *o.getColourBuffer(), 3);
+	renderAttrib(2, *o.getNormalBuffer(), 3);
 	glDrawArrays(GL_TRIANGLES, 0, o.getNumVertices());
 }
 

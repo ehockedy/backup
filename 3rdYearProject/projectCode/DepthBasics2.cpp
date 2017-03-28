@@ -10,14 +10,6 @@ Adapted from example code included in the Kinect SDK.
 #include "header.h"
 #include "DepthBasics2.h"
 #include <fstream>
-//#include <Kinect.h>
-//Shark ML
-/*#include <shark/Data/Dataset.h>
-#include <shark/Algorithms/Trainers/RFTrainer.h> //the random forest trainer
-#include <shark/ObjectiveFunctions/Loss/ZeroOneLoss.h> //zero one loss for evaluation
-#include <shark/Data/Csv.h>*/
-
-//#include <opencv2/opencv.hpp>
 
 #define PRINT( s ){wostringstream os_; os_ << s; OutputDebugStringW( os_.str().c_str() );} //Allows output to debug terminal below
 
@@ -44,9 +36,9 @@ CDepthBasics::CDepthBasics() :
 	imgG(Mat(Size(cDepthWidth, cDepthHeight), CV_8UC1)),
 	//imgD(Mat(Size(480, 360), CV_8UC4, Scalar(0, 0, 0))),
 	//imgG(Mat(Size(480, 360), CV_8UC4, Scalar(0, 0, 0))),
-	run(0),
+	//run(0),
 	minDepth(500),
-	maxDepth(1000),
+	maxDepth(1200),
     m_pKinectSensor(NULL),
     m_pDepthFrameReader(NULL)
     //m_pDepthRGBX(NULL)
@@ -107,22 +99,24 @@ CDepthBasics::~CDepthBasics()
 /// </summary>
 /// <param name="hInstance">handle to the application instance</param>
 /// <param name="nCmdShow">whether to display minimized, maximized, or normally</param>
-void CDepthBasics::SetUp(bool hands, int k, int s, int check, bool draw)
+void CDepthBasics::SetUp(bool hands, int k, int s, int check, bool draw, int step, int depth)
 {
+	maxDepth = depth;
 	twoHands = hands;
 	ksize = k;
 	sigma = s;
 	checkRadius = check;
-	//namedWindow("window1", WINDOW_AUTOSIZE);
+	//namedWindow("Hand output", WINDOW_AUTOSIZE);
 	InitializeDefaultSensor();
 	Update(); //Fills in depthArr
 	//PrepareImage();
-	while(imgD.at<Vec3b>(Point(50,50))[0] == 205 && imgD.at<Vec3b>(Point(100, 50))[0] == 205 && imgD.at<Vec3b>(Point(50, 100))[0] == 205 && imgD.at<Vec3b>(Point(100, 100))[0] == 205)
+	DWORD time = GetTickCount();
+	while(GetTickCount() - time < 2000)//imgD.at<Vec3b>(Point(50,50))[0] == 205 && imgD.at<Vec3b>(Point(100, 50))[0] == 205 && imgD.at<Vec3b>(Point(50, 100))[0] == 205 && imgD.at<Vec3b>(Point(100, 100))[0] == 205)
 	{
 		Update();
 		
 	}
-	FindHands(true);
+	FindHands(true, step, twoHands);
 }
 
 /// <summary>
@@ -174,7 +168,7 @@ void CDepthBasics::Update()
 
         if (SUCCEEDED(hr))
         {
-			nDepthMaxDistance = 1000;
+			nDepthMaxDistance = maxDepth;
         }
 
         if (SUCCEEDED(hr))
@@ -205,6 +199,7 @@ HRESULT CDepthBasics::InitializeDefaultSensor()
     hr = GetDefaultKinectSensor(&m_pKinectSensor); //Get the kinect sensor
     if (FAILED(hr))
     {
+		cout << "CANT FIND KINECT";
         return hr;
     }
 
@@ -270,7 +265,8 @@ void CDepthBasics::ProcessDepth(INT64 nTime, const UINT16* pBuffer, int nWidth, 
 			}
 			else
 			{
-				float depth2 = (255.0 - ((((float)depth - nMinDepth) / (float)(nMaxDepth - nMinDepth)) * 254.0)); //Make closest pixels white, and make the deeper ones darker
+				double depth2 = (255.0 - ((((float)depth - nMinDepth) / (float)(nMaxDepth - nMinDepth)) * 254.0)); //Make closest pixels white, and make the deeper ones darker
+				//double depth3 = 255 / pow(2, 1+255/(255-depth2));
 				depth = (int)depth2; 
 			}
 
@@ -314,24 +310,24 @@ void CDepthBasics::PrepareImage()
 	cvtColor(imgG, imgG, COLOR_GRAY2RGB);
 }
 
-void CDepthBasics::FindHands(bool refreshFrame)
+void CDepthBasics::FindHands(bool refreshFrame, int step, bool twohands)
 {
 	if (refreshFrame)
 	{
-		if (twoHands)
+		if (twohands)
 		{
-			newPoints = initTwoHands(&imgG); //Search the whole image for the closest 2 points as opposed to locally for each
+			newPoints = initTwoHands(&imgG, step); //Search the whole image for the closest 2 points as opposed to locally for each
 		}
 		else
 		{
-			newPoints.first = initOneHand(&imgG);
+			newPoints.first = initOneHand(&imgG, step);
 		}
 	}
 	else
 	{
-		newPoints.first = findClosestInRange(&imgG, prevPoints.first, checkRadius, 1); //Search locally for the closest pixel around the first current closest
-		if (twoHands) {
-			newPoints.second = findClosestInRange(&imgG, prevPoints.second, checkRadius, 2); //Search around the second
+		newPoints.first = findClosestInRange(&imgG, prevPoints.first, checkRadius, 1, step); //Search locally for the closest pixel around the first current closest
+		if (twohands) {
+			newPoints.second = findClosestInRange(&imgG, prevPoints.second, checkRadius, 2, step); //Search around the second
 		}
 	}
 	prevPoints = newPoints;
@@ -340,6 +336,8 @@ void CDepthBasics::FindHands(bool refreshFrame)
 pair<vector<Point>, Point> CDepthBasics::ProcessHand(pixel pix, bool draw)
 {
 	Mat hand1 = getHandArea(imgD, pix);
+	//float proportion = getHandProportion(hand1, pix.depth);
+	//cout << proportion << endl;
 	vector<vector<Point> > contours = getContours(hand1, pix, &imgD);
 	int contourIndex = getContourIndex(contours);
 	vector<Point> convexHull = getHull(contours[contourIndex]);
@@ -359,9 +357,12 @@ void CDepthBasics::DrawClassification(int c)
 	putText(imgD, to_string(c), Point(30, 50), FONT_HERSHEY_SIMPLEX, 2, Scalar(0, 0, 255), 3);
 }
 
-void CDepthBasics::Draw()
+Mat CDepthBasics::Draw(int divisor) //divisor is how much the image is scaled down by
 {
-	imshow("window1", imgD);
+	Mat smallImg(cDepthHeight/divisor, cDepthWidth/ divisor, CV_8UC1);
+	resize(imgD, smallImg, smallImg.size());
+	//imshow("Hand output", smallImg);
+	return smallImg;
 }
 
 bool CDepthBasics::inRange(int radius, pixel pix1, pixel pix2)
@@ -377,11 +378,11 @@ bool CDepthBasics::inRange(int radius, pixel pix1, pixel pix2)
 	return isIn;
 }
 
-pixel CDepthBasics::initOneHand(Mat *img)
+pixel CDepthBasics::initOneHand(Mat *img, int s)
 {
 	pixel closest; //Holds the values of the current second closest
 	closest.depth = 0;
-	int step = 3; //The jump between pixels
+	int step = s; //The jump between pixels
 	//find closest pixel
 	for (int c = 0; c < img->cols; c = c + step)
 	{
@@ -398,13 +399,13 @@ pixel CDepthBasics::initOneHand(Mat *img)
 	return closest;
 }
 
-pair<pixel, pixel> CDepthBasics::initTwoHands(Mat *img) //Find the closest 2 pixels, that are at least a certain distance away from each other
+pair<pixel, pixel> CDepthBasics::initTwoHands(Mat *img, int s) //Find the closest 2 pixels, that are at least a certain distance away from each other
 {
 	pixel closest; //Holds the values of the current closest
 	closest.depth = 0;
 	pixel closest2; //Holds the values of the current second closest
 	closest2.depth = 0;
-	int step = 3; //The jump between pixels
+	int step = s; //The jump between pixels
 	pixel testPix; //Holds the pixel currently being looked at
 
 	//find closest pixel
@@ -444,14 +445,14 @@ pair<pixel, pixel> CDepthBasics::initTwoHands(Mat *img) //Find the closest 2 pix
 	return points; //Return the closest 2 pixels
 }
 
-pixel CDepthBasics::findClosestInRange(Mat *img, pixel currentPix, int radius, int point) //Find the closest pixel within a certain pixel range
+pixel CDepthBasics::findClosestInRange(Mat *img, pixel currentPix, int radius, int point, int s) //Find the closest pixel within a certain pixel range
 {
 	pixel closest;
 	closest.xpos = currentPix.xpos;
 	closest.ypos = currentPix.ypos;
 	closest.depth = 1;
 	pixel testPix;  //Holds the pixel currently being looked at
-	int step = 1;
+	int step = s;
 	double multiplier;
 
 	if (point == 1) //The search area differs based on whch point this is. 
@@ -465,7 +466,7 @@ pixel CDepthBasics::findClosestInRange(Mat *img, pixel currentPix, int radius, i
 
 	radius = radius*multiplier; //Scale the radius
 
-	int cmin = max(0, currentPix.xpos - radius);
+	int cmin = max(0, currentPix.xpos - radius); //Make sure don't go outside of image
 	int cmax = min(img->cols - 1, currentPix.xpos + radius);
 
 	int rmin = max(0, currentPix.ypos - radius);
@@ -511,6 +512,23 @@ Mat CDepthBasics::getHandArea(Mat img, pixel point)
 	return smallMat;
 }
 
+float CDepthBasics::getHandProportion(Mat img, float minDepth)
+{
+	int step = 2;
+	float threshold = minDepth * 0.8;
+	int closeCounter = 0; //The number of pixels that are above the threshold
+	int totalCounter = 0;
+	for (int c = 0; c < img.cols; c = c + step) {
+		for (int r = 0; r < img.rows; r = r + step) {
+			if (((int)(img.at<Vec3b>(Point(c, r))[0])) >= threshold) { //If pixel is within depth range
+				closeCounter++;
+			}
+			totalCounter++;
+		}
+	}
+	return (float)(closeCounter) / (float)(totalCounter); //return thr proportion of pixels that are a similar intensity than the detected hand
+}
+
 void CDepthBasics::drawBoxes(Mat *img, pixel point)
 {
 	double multiplier = ((double)point.depth / 255.0)*0.5 + 0.5; //The multiplier used to make the box/checking areas around the centre pixel change size as the hand moves deeper
@@ -554,6 +572,7 @@ void CDepthBasics::drawPixels(Mat *img, pixel point, int size)
 
 vector<vector<Point> > CDepthBasics::getContours(Mat img, pixel p, Mat *imgDraw)
 {
+	//Used to get contours for finding convex hull points. Source: http://docs.opencv.org/2.4/doc/tutorials/imgproc/shapedescriptors/hull/hull.html 
 	double mult = ((double)p.depth / 255.0)*0.5 + 0.5;
 	Mat outImg = img.clone();
 	cvtColor(outImg, outImg, COLOR_RGB2GRAY);
@@ -573,6 +592,7 @@ vector<vector<Point> > CDepthBasics::getContours(Mat img, pixel p, Mat *imgDraw)
 
 int CDepthBasics::getContourIndex(vector<vector<Point> > contours)
 {
+	//Find the biggest group of contours - this will be the one that contains the outside shape of the hand
 	int maxi = 0;
 	int maxiSize = 0;
 	for (int i = 0; i < contours.size(); i++)
@@ -588,6 +608,7 @@ int CDepthBasics::getContourIndex(vector<vector<Point> > contours)
 
 vector<Point> CDepthBasics::getHull(vector<Point> contours)
 {
+	//get set of convex hull points from the contours
 	vector<Point> hull(contours.size());
 	if (contours.size() > 0)
 	{
@@ -620,121 +641,6 @@ Point CDepthBasics::getMaxPoint(Mat *img, vector<Point> hull, pixel centre)
 	}
 	return best;
 }
-/*
-string CDepthBasics::getMLTrainData(vector<Point> hullPoints, pixel centralPoint)
-{
-	double mult = ((double)centralPoint.depth / 255.0)*0.5 + 0.5;
-	ostringstream ss;
-	string data = "";
-	if (hullPoints.size() >= 25)
-	{
-		for (int i = 0; i < 25; i++)
-		{
-			ss << getDist(hullPoints[i], centralPoint) / mult;// << ',' << getAngle(hullPoints[i], centralPoint);
-			string s(ss.str());
-			data += s;
-			data += ',';
-			ss.str(string());
-			ss.clear();
-		}
-	}
-	else
-	{
-		int j = 0; //The current position in the convexHull list
-		float count = 0; //The value that i must be greater than in order for a ? to be included
-		float gap = 25.0 / (25.0 - hullPoints.size()); //The gap between ? on average
-		for (int i = 0; i < 25; i++)
-		{
-			if (i >= count) //Interpolate such that we get a total of 25 features. Interpolation might work since the area around the hand is fairly continuous
-			{
-				float avg = (getDist(hullPoints[j % hullPoints.size()], centralPoint) + getDist(hullPoints[(j + 1) % hullPoints.size()], centralPoint)) / 2;
-				ss << avg / mult;// << ',' << getAngle(hullPoints[j], centralPoint);;
-				string s(ss.str());
-				data += s;
-				data += ',';
-				ss.str(string());
-				ss.clear();
-				count += gap;
-			}
-			else
-			{
-				ss << getDist(hullPoints[j], centralPoint) / mult;// << ',' << getAngle(hullPoints[j], centralPoint);;
-				string s(ss.str());
-				data += s;
-				data += ',';
-				ss.str(string());
-				ss.clear();
-				j++;
-			}
-		}
-	}
-
-	data.pop_back(); //Get rid of the final comma
-	data += '\n';
-	return data;
-}
-
-Data<RealVector> CDepthBasics::getMLdata(vector<Point> hullPoints, pixel centralPoint)
-{
-	double mult = ((double)centralPoint.depth / 255.0)*0.5 + 0.5;
-	RealVector data = {};
-	if (hullPoints.size() >= 25)
-	{
-		for (int i = 0; i < 25; i++)
-		{
-			data.push_back(getDist(hullPoints[i], centralPoint)/mult);
-			//data.push_back(getAngle(hullPoints[i], centralPoint));
-
-		}
-	}
-	else
-	{
-		int j = 0; //The current position in the convexHull list
-		float count = 0; //The value that i must be greater than in order for a ? to be included
-		float gap = 25.0 / (25.0 - hullPoints.size()); //The gap between ? on average
-													  
-		for (int i = 0; i < 25; i++)
-		{
-			if (i >= count) //Interpolate such that we get a total of 25 features. Interpolation might work since the area around the hand is fairly continuous
-			{
-				float avg = (getDist(hullPoints[j % hullPoints.size()], centralPoint) + getDist(hullPoints[(j + 1) % hullPoints.size()], centralPoint)) / 2;
-				data.push_back(avg/mult);
-				//data.push_back(getAngle(hullPoints[j], centralPoint));
-				count += gap;
-			}
-			else
-			{
-				//PRINT(data.size());
-				data.push_back(getDist(hullPoints[j], centralPoint)/mult);
-				//data.push_back(getAngle(hullPoints[j], centralPoint));
-				j++;
-			}
-		}
-	}
-	vector<RealVector> inputData = { data };
-	Data<RealVector> dataOut = createDataFromRange(inputData);
-	return dataOut;
-}
-
-int CDepthBasics::classify(Data<RealVector> prediction, int sampleNum, double confidenceThreshold) //Chooses class from 1 to n, or 0 if unsure, sampleNum is for is there is more than 1 piece of data, it chooses the sampleNumth piece, confidenceThreshold is the value, below which the unknown label is returned.
-{
-	double classificationVal = 0;
-	int classification = 0;
-	for (int i = 0; i < prediction.element(sampleNum).size(); i++)
-	{
-		//cout << prediction.element(sampleNum)[i] << endl;
-		if (prediction.element(sampleNum)[i] > classificationVal)
-		{
-			classificationVal = prediction.element(sampleNum)[i];
-			classification = i;
-		}
-	}
-	if (classificationVal < confidenceThreshold)
-	{
-		classification = -1;
-	}
-	return classification + 1;
-}*/
 
 pixel CDepthBasics::getHand1()
 {

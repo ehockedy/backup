@@ -50,9 +50,10 @@ fstream output;
 
 pixel prevHand1;
 deque<int> poses;
-bool menuOpen = true;
+bool menuOpen = false;
 int menuCounter = 0;
 int menuClosedCounter = 0;
+bool grabbing = false;
 
 void main()
 {
@@ -92,6 +93,10 @@ void main()
 	fingertipCursor.setColour(1, 0, 0);
 	fingertipCursor.doBuffers();
 
+	Cube cursor3d;
+	cursor3d.setColour(0.3, 0.8, 1);
+	cursor3d.doBuffers();
+
 	Slider slider1;
 	a.addToMenuWorld(slider1.setUpPhysics(btVector3(-25, 10, 0)));
 	Slider slider2;
@@ -123,7 +128,7 @@ void main()
 
 	Plane closeWall;
 	a.addToWorld(closeWall.setUpPhysics(btVector3(0, 0, 1), btVector3(0, 0, -15)));
-	
+
 
 	for (int i = 0; i < numSavedPoses; i++)
 	{
@@ -138,7 +143,7 @@ void main()
 		else {
 			a.step(GetTickCount() - stepTime);
 		}*/
-		
+
 		stepTime = GetTickCount();
 
 		cdepth.Update(); //Fills in depthArr
@@ -152,7 +157,7 @@ void main()
 		pair<vector<Point>, Point> hand1Features = cdepth.ProcessHand(hand1, draw); //Get the information used for pose identification
 		vector<Point> hand1hull = hand1Features.first;
 		Point fingertip1 = hand1Features.second;
-		
+
 		int pose = ml.Predict(hand1hull, hand1); //Predict the pose
 
 		if (draw)
@@ -162,70 +167,116 @@ void main()
 		}
 
 		a.preprocessing(freemove);
-		if (menuOpen == false) {
-			if (pose == 1) {
-				cube1.setColour(1, 0, 0);
-			}
-			else if (pose == 2) {
-				cube1.setColour(0, 1, 0);
-			}
-			else if (pose == 3) {
-				cube1.setColour(0, 0, 1);
-			}
-			else {
-				cube1.setColour(0, 0, 0);
-			}
-
-			cube1.doBuffers();
-
-			a.pushMat();
-			if (pose == 2) { //Grabbing the cube
-				a.applyForce(cube1, GetTickCount() - stepTime, (prevHand1.xpos - hand1.xpos) * 1000, (prevHand1.ypos - hand1.ypos) * 1000, (hand1.depth - prevHand1.depth) * 1000);
-			}
-			else if (poses.back() == 2 && abs(hand1.depth - prevHand1.depth) < 10 && abs(hand1.xpos - prevHand1.xpos) + abs(hand1.ypos - prevHand1.ypos) < 10) { // because can fly off a little if opening hand due to movement of central point and change of depth
-				cube1.getRigidBody()->setLinearVelocity(btVector3(0, 0, 0));
-			}
-
-			
-
-			a.updateCube(cube1);
-			a.scale(cube1.getScaleFactor(), cube1.getScaleFactor(), cube1.getScaleFactor()); //If double cube size, scale double as well, but after updated cube
-			a.render(cube1);
-			a.popMat();
-
-			a.pushMat();
-			a.updateCube(stillCube);
-			a.render(stillCube);
-			a.popMat();
-		}
 
 		//Always render the room
-			a.pushMat();
-			a.scale(10, 10, 10);
-			a.render(plane1);
-			a.popMat();
+		a.pushMat();
+		a.scale(10, 10, 10);
+		a.render(plane1);
+		a.popMat();
 
-			a.pushMat();
-			a.translate(rightWall.getRigidBody()->getCenterOfMassPosition()[0], rightWall.getRigidBody()->getCenterOfMassPosition()[1], rightWall.getRigidBody()->getCenterOfMassPosition()[2]);
-			a.rotate(3.14159 / 2, 0, 0, 1);
-			a.scale(10, 10, 10);
-			a.render(rightWall);
-			a.popMat();
+		a.pushMat();
+		a.translate(rightWall.getRigidBody()->getCenterOfMassPosition()[0], rightWall.getRigidBody()->getCenterOfMassPosition()[1], rightWall.getRigidBody()->getCenterOfMassPosition()[2]);
+		a.rotate(3.14159 / 2, 0, 0, 1);
+		a.scale(10, 10, 10);
+		a.render(rightWall);
+		a.popMat();
 
-			a.pushMat(); //remove these, change actual vertex data at start
-			a.translate(leftWall.getRigidBody()->getCenterOfMassPosition()[0], leftWall.getRigidBody()->getCenterOfMassPosition()[1], leftWall.getRigidBody()->getCenterOfMassPosition()[2]);
-			a.rotate(3.14159 / 2, 0, 0, 1);
-			a.scale(10, 10, 10);
-			a.render(leftWall);
-			a.popMat();
+		a.pushMat(); //remove these, change actual vertex data at start
+		a.translate(leftWall.getRigidBody()->getCenterOfMassPosition()[0], leftWall.getRigidBody()->getCenterOfMassPosition()[1], leftWall.getRigidBody()->getCenterOfMassPosition()[2]);
+		a.rotate(3.14159 / 2, 0, 0, 1);
+		a.scale(10, 10, 10);
+		a.render(leftWall);
+		a.popMat();
 
-			a.pushMat();
-			a.translate(backWall.getRigidBody()->getCenterOfMassPosition()[0], backWall.getRigidBody()->getCenterOfMassPosition()[1], backWall.getRigidBody()->getCenterOfMassPosition()[2]);
-			a.rotate(3.14159 / 2, 1, 0, 0);
-			a.scale(10, 10, 10);
-			a.render(backWall);
-			a.popMat();
+		a.pushMat();
+		a.translate(backWall.getRigidBody()->getCenterOfMassPosition()[0], backWall.getRigidBody()->getCenterOfMassPosition()[1], backWall.getRigidBody()->getCenterOfMassPosition()[2]);
+		a.rotate(3.14159 / 2, 1, 0, 0);
+		a.scale(10, 10, 10);
+		a.render(backWall);
+		a.popMat();
+
+		//if (menuOpen == false) {
+		if (pose == 1) {
+			cube1.setColour(1, 0, 0);
+		}
+		else if (pose == 2) {
+			cube1.setColour(0, 1, 0);
+		}
+		else if (pose == 3) {
+			cube1.setColour(0, 0, 1);
+		}
+		else {
+			cube1.setColour(0, 0, 0);
+		}
+
+		cube1.doBuffers();
+
+		float range = cube1.getScaleFactor() + 1;
+		if (pose == 2 && poses.back() != 2 && cursor3d.within(cube1, range, range, range)) { //Grabbing the cube
+			grabbing = true;
+		}
+		a.pushMat();
+		if (grabbing) { //Grabbing the cube
+			a.applyForce(cube1, GetTickCount() - stepTime, (prevHand1.xpos - hand1.xpos) * 1000, (prevHand1.ypos - hand1.ypos) * 1000, (hand1.depth - prevHand1.depth) * 1000);
+		}
+		if (pose != 2 && poses.back() == 2 && abs(hand1.depth - prevHand1.depth) < 10 && abs(hand1.xpos - prevHand1.xpos) + abs(hand1.ypos - prevHand1.ypos) < 10) { // because can fly off a little if opening hand due to movement of central point and change of depth
+			cube1.getRigidBody()->setLinearVelocity(btVector3(0, 0, 0));
+			grabbing = false;
+		}
+		else if (pose != 2) {
+			grabbing = false;
+		}
+
+		if (cursor3d.within(cube1, range, range, range) && pose != 2) {
+			cube1.setColour(1, 1, 1);
+			cube1.doBuffers();
+		}
+		else if(cursor3d.within(cube1, range, range, range)) {
+			cube1.setColour(0.8, 1, 0.8);
+			cube1.doBuffers();
+		}
+
 		
+
+		a.updateCube(cube1);
+		a.scale(cube1.getScaleFactor(), cube1.getScaleFactor(), cube1.getScaleFactor()); //If double cube size, scale double as well, but after updated cube
+		a.render(cube1);
+		a.popMat();
+
+		a.pushMat();
+		a.updateCube(stillCube);
+		a.render(stillCube);
+		a.popMat();
+		//}
+		if (menuOpen == false && grabbing == false && (cursor3d.xpos > 10 || cursor3d.xpos < -10) || cursor3d.ypos > 10 || cursor3d.ypos < 0 || cursor3d.zpos > 10 || cursor3d.zpos < -10) //add other dircetions
+		{
+			glDisable(GL_DEPTH_TEST);
+			a.pushMat();
+			cursor3d.setXYZ(((float)cdepth.getWidth() / 2.0 - (float)hand1.xpos) / 5.0, ((float)cdepth.getHeight() / 2.0 - (float)hand1.ypos) / 5.0, -((cdepth.getMaxDepth() - cdepth.getMinDepth()) / 2.0 - 80 - (float)hand1.depth) / 5.0);
+			a.translate(cursor3d.xpos, cursor3d.ypos, cursor3d.zpos);
+			a.scale(0.2, 0.2, 0.2);
+			a.render(cursor3d);
+			a.popMat();
+			glEnable(GL_DEPTH_TEST);
+		}
+		else if (grabbing == false && menuOpen == false) {
+			//glDisable(GL_DEPTH_TEST);
+			a.pushMat();
+			cursor3d.setXYZ(((float)cdepth.getWidth() / 2.0 - (float)hand1.xpos) / 5.0, ((float)cdepth.getHeight() / 2.0 - (float)hand1.ypos) / 5.0, -((cdepth.getMaxDepth() - cdepth.getMinDepth()) / 2.0 - 80 - (float)hand1.depth) / 5.0);
+			a.translate(cursor3d.xpos, cursor3d.ypos, cursor3d.zpos);
+			a.scale(0.4, 0.4, 0.4);
+			a.render(cursor3d);
+			a.popMat();
+			//glEnable(GL_DEPTH_TEST);
+		}
+
+		Mat noMenuImg;
+		noMenuImg.create(a.getHeight(), a.getWidth(), CV_8UC3);
+		glReadPixels(0, 0, noMenuImg.cols, noMenuImg.rows, GL_BGR, GL_UNSIGNED_BYTE, noMenuImg.data);
+		
+		Mat justMenu;
+		justMenu.create(a.getHeight(), a.getWidth(), CV_8UC3);
+
 		if (menuOpen == true) { //stay open
 			mat4 p = a.getP(); //orthographic projection for menu
 			double width = a.getWidth();
@@ -247,6 +298,11 @@ void main()
 				a.scale(width*0.01 - 0.5, height*0.01 - 0.5, 0);
 				a.render(menuBackground);
 			a.popMat();
+
+			glReadPixels(0, 0, justMenu.cols, justMenu.rows, GL_BGR, GL_UNSIGNED_BYTE, justMenu.data);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);//Set the background colour
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //these two could be quite computationally intensive
+
 
 			//trackbar 1
 			a.pushMat();
@@ -273,7 +329,7 @@ void main()
 				
 					btCollisionShape* shape = new btBoxShape(btVector3(1.0f*slider1.getValue()/10.0, 1.0f * slider1.getValue()/10.0, 1.0f * slider1.getValue()/10.0));
 					cube1.getRigidBody()->setCollisionShape(shape);
-					a.setPosition(cube1, 0, 20, 0);
+					//a.setPosition(cube1, 0, 20, 0);
 					cube1.setScaleFactor(slider1.getValue() / 10.0);
 					//cube1.getRigidBody()->setMassProps(5.0f, btVector3(0.0, 0.0, 0.0));
 				
@@ -288,7 +344,7 @@ void main()
 					a.setPosition(slider2, cursor.getRigidBody()->getCenterOfMassPosition()[0], slider2.getRigidBody()->getCenterOfMassPosition()[1], 0);
 					slider2.setValue((abs(slider2.getRigidBody()->getCenterOfMassPosition()[0]) - 20) / 2);
 
-					cube1.getRigidBody()->setMassProps(1.0f*slider2.getValue() / 10.0, btVector3(0.0, 0.0, 0.0));
+					cube1.getRigidBody()->setMassProps(1.0f*slider2.getValue() / 10.0, cube1.getRigidBody()->getLocalInertia());
 					a.setPosition(cube1, 0, 20, 0);
 				}
 				a.updatePosition(slider2);
@@ -327,6 +383,7 @@ void main()
 		}
 		else {
 			menuClosedCounter++;
+			glReadPixels(0, 0, justMenu.cols, justMenu.rows, GL_BGR, GL_UNSIGNED_BYTE, justMenu.data);
 		}
 		
 		if(a.menuOpenGesture(poses) && menuCounter > frameCheck){ //go from open to closed
@@ -338,6 +395,31 @@ void main()
 			menuOpen = true;
 			menuClosedCounter = 0;
 		}
+		
+		Mat menuImg(a.getHeight(), a.getWidth(), CV_8UC3); //just the sliders and cursor
+		glReadPixels(0, 0, menuImg.cols, menuImg.rows, GL_BGR, GL_UNSIGNED_BYTE, menuImg.data);
+
+		Mat translucentbackground(a.getHeight(), a.getWidth(), CV_8UC3);
+		//Mat slidersAndCursor(a.getHeight(), a.getWidth(), CV_8UC3);
+		//Mat combinedImg(a.getHeight(), a.getWidth(), CV_8UC3);
+
+		addWeighted(noMenuImg, 0.5, justMenu, 0.5, 0, translucentbackground);
+		//addWeighted(translucentbackground, 1, menuImg, 0.5, 0, translucentbackground);
+		if (menuOpen) {
+			addWeighted(translucentbackground, 1, menuImg, -1, 0, translucentbackground);
+		}
+		
+		//cout << -1*(cursor.getRigidBody()->getCenterOfMassPosition()[0])+cdepth.getWidth()/2 << " " << hand1.xpos << endl;
+		/*for (int r = 0; r < menuImg.rows; r++) {
+			for (int c = 0; c < menuImg.cols; c++) {
+				if (menuImg.at<Vec3b>(r, c) == justMenu.at<Vec3b>(r, c)) {
+					slidersAndCursor.at<Vec3b>(r, c)[0] = 0;
+					slidersAndCursor.at<Vec3b>(r, c)[1] = 0;
+					slidersAndCursor.at<Vec3b>(r, c)[2] = 0;
+				}
+			}
+		}*/
+		a.setOglimg(translucentbackground);
 
 		a.postprocessing();
 
@@ -392,3 +474,4 @@ void main()
 	}
 	
 }
+
