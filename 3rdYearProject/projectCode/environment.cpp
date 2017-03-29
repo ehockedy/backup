@@ -397,7 +397,6 @@ void App::setupView() {
 	glEnable(GL_DEPTH_TEST);
 	// Accept fragment if it closer to the camera than the former one
 	glDepthFunc(GL_LESS);
-
 	
 
 	GLuint VertexArrayID; //A predefined OpenGL type to store an unsigned binary integer. This is different to an normal unsigned int in that it is a fixed size of 32 bis, as opposed to the size of a regular int whih can vary dependig on platform. This allows GL to work with the sizes it expects to.
@@ -471,10 +470,11 @@ void App::setupView() {
 	glUniformMatrix4fv(ModelMatrixID, 1, GL_FALSE, &Model[0][0]);
 	glUniformMatrix4fv(ViewMatrixID, 1, GL_FALSE, &View[0][0]);
 
-	glm::vec3 lightPos = glm::vec3(0, 10, -5);
+	glm::vec3 lightPos = glm::vec3(0, 20, -20);
 	glUniform3f(LightID, lightPos.x, lightPos.y, lightPos.z);
 	
-
+	menuUniformLocation = glGetUniformLocation(programID, "menu");
+	glUniform1i(menuUniformLocation, 0);
 }
 
 bool App::continueProcessing() {
@@ -716,9 +716,16 @@ void App::stepMenu(unsigned long time) {
 void App::render(Object o) {
 	MVP = Projection * View * Model;
 	glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+
+	///light
+	glUniformMatrix4fv(ModelMatrixID, 1, GL_FALSE, &Model[0][0]);
+	glUniformMatrix4fv(ViewMatrixID, 1, GL_FALSE, &View[0][0]);
+	///light
+
 	renderAttrib(0, *o.getVertexBuffer(), 3);
 	renderAttrib(1, *o.getColourBuffer(), 3);
 	renderAttrib(2, *o.getNormalBuffer(), 3);
+
 	glDrawArrays(GL_TRIANGLES, 0, o.getNumVertices());
 }
 
@@ -729,7 +736,7 @@ void App::setupPhysics() {
 }
 
 //Set up the physics of the cube object 
-btRigidBody* Cube::setUpPhysics(btVector3 pos) {
+btRigidBody* Cube::setUpPhysics(btVector3 pos) {//if have initial size as bg, then make small, collides fine with walls, but had a lot of intertia and takes ages to stop spinning...
 	collisionShape = new btBoxShape(btVector3(1.0f, 1.0f, 1.0f)); //A collision shape determines collisions, it has no concept of mass inertia, etc. Many bodies can share a collision shape, but they should be the same shape.
 	motionState = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), pos)); //Initialise the motion state of the cube. This communicates the movement to the system based on the forces exerted on the object.
 	mass = 1; //Give it a mass of 1kg
@@ -738,6 +745,7 @@ btRigidBody* Cube::setUpPhysics(btVector3 pos) {
 	btRigidBody::btRigidBodyConstructionInfo rigidBodyCI(mass, motionState, collisionShape, fallInertia); //If want to create lots of the bodies with the same parameters, only need to create one of these and pass that info to each body that is made
 	rigidBody = new btRigidBody(rigidBodyCI); //Create rigid body, the basic building block of all physics simulations. Deformation on the box is negated, no matter how much force is exerted.
 	rigidBody->setLinearVelocity(btVector3(0, 0, 0)); //No initial speed
+	rigidBody->setAngularVelocity(btVector3(0, 0, 0)); 
 	return rigidBody;
 }
 
@@ -747,9 +755,10 @@ btRigidBody* Plane::setUpPhysics(btVector3 norm, btVector3 pos) {
 		norm = btVector3(0, 1, 0);
 	}
 
-	planeShape = new btStaticPlaneShape(norm, 1);
+	planeShape = new btStaticPlaneShape(norm, 1);//1
 	motionState = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), pos)); //Instantiate the ground. Orientation is identity. Position is 1 meter below ground. This compensastes the 1m offset the shape itself had.
-	btRigidBody::btRigidBodyConstructionInfo rigidBodyCI(0, motionState, planeShape, btVector3(0, 0, 0)); //btRigidBodyConstructionInfo structure provides info to create a rigid body. First parameter is mass. When mass is zero, Bullet treats it as immovable i.e. infinite mass. 2nd and 3rd params are the motion shape (coupe of lienes above) and collision shape (in the shape section). Final param is inertia.
+	btRigidBody::btRigidBodyConstructionInfo rigidBodyCI(0, motionState, planeShape, btVector3(0, 0, 0)); //btRigidBodyConstructionInfo structure provides info to create a rigid body. First parameter is mass. When mass is zero, Bullet treats it as immovable i.e. infinite mass. 2nd and 3rd params are the motion shape (coupe of lines above) and collision shape (in the shape section). Final param is inertia.
+
 	rigidBody = new btRigidBody(rigidBodyCI);
 	//rigidBody->translate(btVector3(0, 0, 0));
 	return rigidBody;

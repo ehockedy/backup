@@ -165,8 +165,10 @@ public:
 	void setP(glm::mat4 mat) { Projection = mat; };
 	glm::mat4 getP() { return Projection; };
 	bool menuOpenGesture(std::deque<int> poses);
-	float getGravity() { return dynamicsWorldMenu->getGravity()[1]; };
+	btVector3 getGravity() { return dynamicsWorldMenu->getGravity(); };
 	void setOglimg(cv::Mat img) { oglimg = img; };
+	void menuLightingOff() {glUniform1i(menuUniformLocation, 1);};
+	void lightingOn() { glUniform1i(menuUniformLocation, 0); };
 private:
 	btBroadphaseInterface* broadphase = new btDbvtBroadphase(); //Decide on the Broadphase algorithm - uses the bounding boxes of objects in the world to quickly compute a conservative approximate list of colliding pairs
 	btDefaultCollisionConfiguration* collisionConfiguration = new btDefaultCollisionConfiguration(); //allows configuration of Bullet collision stack allocator and pool memory allocators
@@ -200,6 +202,7 @@ private:
 	GLuint LightID;
 	GLuint ViewMatrixID;
 	GLuint ModelMatrixID;
+	GLuint menuUniformLocation;
 
 	std::stack<glm::mat4> modelViewStack;
 
