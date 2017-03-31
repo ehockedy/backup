@@ -658,13 +658,13 @@ void App::updateCube(Cube c) {
 	//cout << m[12] << " " << m[13] << " " << m[14] << " " << m[15] << endl;
 	Model = rotpos;
 
-	mat4 rotNormal = transpose(inverse(Model));
+	/*mat4 rotNormal = transpose(inverse(Model));
 	vector<GLfloat> rN;
 	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 4; j++) {
 			rN.push_back(rotNormal[i][j]);
 		}
-	}
+	}*/
 	//c.setNormals(rN);
 	//c.getNormalBuffer()
 }
@@ -744,8 +744,8 @@ btRigidBody* Cube::setUpPhysics(btVector3 pos) {//if have initial size as bg, th
 	collisionShape->calculateLocalInertia(mass, fallInertia); //Calculates the inertia as it falls
 	btRigidBody::btRigidBodyConstructionInfo rigidBodyCI(mass, motionState, collisionShape, fallInertia); //If want to create lots of the bodies with the same parameters, only need to create one of these and pass that info to each body that is made
 	rigidBody = new btRigidBody(rigidBodyCI); //Create rigid body, the basic building block of all physics simulations. Deformation on the box is negated, no matter how much force is exerted.
-	rigidBody->setLinearVelocity(btVector3(0, 0, 0)); //No initial speed
-	rigidBody->setAngularVelocity(btVector3(0, 0, 0)); 
+	//rigidBody->setLinearVelocity(btVector3(0, 0, 0)); //No initial speed
+	//rigidBody->setAngularVelocity(btVector3(0, 0, 0)); 
 	return rigidBody;
 }
 
@@ -837,7 +837,15 @@ void App::applyForce(Object o, unsigned long t, float sx, float sy, float sz) {
 	float zscale = 2.0; //The amount that the z is scaled by. This allows the user to not have to move as much as can have issues with not being able to move the whole z direction in one go
 	float yscale = 1.0;
 	float xscale = 1.0;
-	btVector3 force = scale * btVector3(m*accx*xscale, m*(accy+gravity)*yscale, m*accz*zscale); //Calculate the overall force. The posisitve gravity force allows the cube to not fall.
+	btVector3 force = scale * btVector3(m*accx*xscale, m*(accy+gravity)*yscale, m*accz*zscale); //Calculate the overall force. The positive gravity force allows the cube to not fall.
+	o.getRigidBody()->applyCentralForce(force);
+}
+
+void App::applyNegativeGravity(Object o) {
+	btScalar m = o.getMass(); //get the mass
+	float scale = 3; //A value to scale the force by
+	float gravity = 9.81 / scale; //Gravity scaled
+	btVector3 force = scale * btVector3( 0, m*(-gravity),0); //Calculate the overall force. The positive gravity force allows the cube to not fall.
 	o.getRigidBody()->applyCentralForce(force);
 }
 
@@ -857,4 +865,12 @@ bool App::menuOpenGesture(deque<int> poses) {
 		result = true;
 	}
 	return result;
+}
+
+void App::makeCube(float x, float y, float z, vector<Cube*> *cubes, vector<int> *cubeState, vector<int> *cubeState2) {
+	Cube* cube1 = new Cube();
+	dynamicsWorld->addRigidBody(cube1->setUpPhysics(btVector3(x, y, z))); //Add to the world
+	cubes->push_back(cube1);
+	cubeState->push_back(0);
+	cubeState2->push_back(0);
 }

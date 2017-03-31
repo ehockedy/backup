@@ -312,7 +312,7 @@ void CDepthBasics::PrepareImage()
 
 void CDepthBasics::FindHands(bool refreshFrame, int step, bool twohands)
 {
-	if (refreshFrame)
+	if (refreshFrame) //if search whole image for hands
 	{
 		if (twohands)
 		{
@@ -333,11 +333,14 @@ void CDepthBasics::FindHands(bool refreshFrame, int step, bool twohands)
 	prevPoints = newPoints;
 }
 
-pair<vector<Point>, Point> CDepthBasics::ProcessHand(pixel pix, bool draw)
+void CDepthBasics::UpdatePreviousHands(pixel h1, pixel h2) {
+	prevPoints = pair<pixel, pixel>(h1, h2);
+}
+
+pair<vector<Point>, Point> CDepthBasics::ProcessHand(pixel pix, bool draw, int handNum)
 {
 	Mat hand1 = getHandArea(imgD, pix);
 	//float proportion = getHandProportion(hand1, pix.depth);
-	//cout << proportion << endl;
 	vector<vector<Point> > contours = getContours(hand1, pix, &imgD);
 	int contourIndex = getContourIndex(contours);
 	vector<Point> convexHull = getHull(contours[contourIndex]);
@@ -349,12 +352,34 @@ pair<vector<Point>, Point> CDepthBasics::ProcessHand(pixel pix, bool draw)
 		drawContours(imgD, contours, contourIndex, Scalar(255, 255, 0), 2); //Draw area around hand
 		circle(imgD, best, 3, Scalar(0, 0, 255), -1); //Draw fingertip
 	}
+
+	if (handNum == 2) { 
+		flip(hand1, hand1, 1); //rotate so appears as a right hand since pose identification only trained on right hand
+		contours = getContours(hand1, pix, &imgD);
+		contourIndex = getContourIndex(contours);
+		convexHull = getHull(contours[contourIndex]);
+		best = getMaxPoint(&imgD, convexHull, pix);
+	}
+	/*else {
+		if (draw)
+		{
+			drawHull(&imgD, convexHull); //Draw the hull points
+										 //drawBoxes(&imgD, pix); //Draw the boxes on the output image
+			drawContours(imgD, contours, contourIndex, Scalar(255, 255, 0), 2); //Draw area around hand
+			circle(imgD, best, 3, Scalar(0, 0, 255), -1); //Draw fingertip
+		}
+	}*/
 	return pair<vector<Point>, Point>(convexHull, best);
 }
 
-void CDepthBasics::DrawClassification(int c)
+void CDepthBasics::DrawLeftClassification(int c)
 {
 	putText(imgD, to_string(c), Point(30, 50), FONT_HERSHEY_SIMPLEX, 2, Scalar(0, 0, 255), 3);
+}
+
+void CDepthBasics::DrawRightClassification(int c)
+{
+	putText(imgD, to_string(c), Point(450, 50), FONT_HERSHEY_SIMPLEX, 2, Scalar(0, 0, 255), 3);
 }
 
 Mat CDepthBasics::Draw(int divisor) //divisor is how much the image is scaled down by

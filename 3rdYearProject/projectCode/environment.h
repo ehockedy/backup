@@ -158,6 +158,7 @@ public:
 	void step(unsigned long time);
 	void stepMenu(unsigned long time);
 	void applyForce(Object o, unsigned long time, float sx, float sy, float sz);
+	void applyNegativeGravity(Object o);
 	int getWidth() { return width; };
 	int getHeight() { return height; };
 	void outputImage(std::string name, cv::Mat handsImg);
@@ -169,6 +170,7 @@ public:
 	void setOglimg(cv::Mat img) { oglimg = img; };
 	void menuLightingOff() {glUniform1i(menuUniformLocation, 1);};
 	void lightingOn() { glUniform1i(menuUniformLocation, 0); };
+	void makeCube(float x, float y, float z, std::vector<Cube*> *cubes, std::vector<int> *cubeState, std::vector<int> *cubeState2);
 private:
 	btBroadphaseInterface* broadphase = new btDbvtBroadphase(); //Decide on the Broadphase algorithm - uses the bounding boxes of objects in the world to quickly compute a conservative approximate list of colliding pairs
 	btDefaultCollisionConfiguration* collisionConfiguration = new btDefaultCollisionConfiguration(); //allows configuration of Bullet collision stack allocator and pool memory allocators
