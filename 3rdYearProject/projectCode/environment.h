@@ -33,6 +33,7 @@ public:
 	btRigidBody* getRigidBody() { return rigidBody; };
 	void setRigidBody(btRigidBody* rb) { rigidBody = rb; };
 	btScalar getMass() { return mass; };
+	void setMass(btScalar m) { mass = m; };
 	std::string getID() { return id; };
 	void setVertices(std::vector<GLfloat> data);
 	void setNormals(std::vector<GLfloat> data);
@@ -44,6 +45,8 @@ public:
 	float xpos;
 	float ypos;
 	float zpos;
+	void setNum(int n) { num = n; };
+	int getNum() { return num; };
 protected:
 	Object();
 	int numVertexAttributes;
@@ -62,13 +65,14 @@ protected:
 
 	std::string id;
 	float scaleFactor;
+	int num;
 };
 
 class Cube : public Object {
 public:
 	Cube();
 	//void setVertices();
-	btRigidBody* setUpPhysics(btVector3 pos);
+	btRigidBody* setUpPhysics(btVector3 pos, btScalar m, btVector3 dim);
 };
 
 class Plane : public Object {
@@ -166,11 +170,13 @@ public:
 	void setP(glm::mat4 mat) { Projection = mat; };
 	glm::mat4 getP() { return Projection; };
 	bool menuOpenGesture(std::deque<int> poses);
+	bool menuCloseGesture(std::deque<int> poses);
 	btVector3 getGravity() { return dynamicsWorldMenu->getGravity(); };
 	void setOglimg(cv::Mat img) { oglimg = img; };
 	void menuLightingOff() {glUniform1i(menuUniformLocation, 1);};
 	void lightingOn() { glUniform1i(menuUniformLocation, 0); };
-	void makeCube(float x, float y, float z, std::vector<Cube*> *cubes, std::vector<int> *cubeState, std::vector<int> *cubeState2);
+	void makeCube(float x, float y, float z, float mass, float xdim, float ydim, float zdim, std::vector<Cube*> *cubes, std::vector<int> *cubeState, std::vector<int> *cubeState2);
+	Cube* replace(Object o, float x, float y, float z, float mass, float xdim, float ydim, float zdim);
 private:
 	btBroadphaseInterface* broadphase = new btDbvtBroadphase(); //Decide on the Broadphase algorithm - uses the bounding boxes of objects in the world to quickly compute a conservative approximate list of colliding pairs
 	btDefaultCollisionConfiguration* collisionConfiguration = new btDefaultCollisionConfiguration(); //allows configuration of Bullet collision stack allocator and pool memory allocators

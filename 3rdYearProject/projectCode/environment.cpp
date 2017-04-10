@@ -736,16 +736,17 @@ void App::setupPhysics() {
 }
 
 //Set up the physics of the cube object 
-btRigidBody* Cube::setUpPhysics(btVector3 pos) {//if have initial size as bg, then make small, collides fine with walls, but had a lot of intertia and takes ages to stop spinning...
-	collisionShape = new btBoxShape(btVector3(1.0f, 1.0f, 1.0f)); //A collision shape determines collisions, it has no concept of mass inertia, etc. Many bodies can share a collision shape, but they should be the same shape.
+btRigidBody* Cube::setUpPhysics(btVector3 pos, btScalar m, btVector3 dim) {//if have initial size as bg, then make small, collides fine with walls, but had a lot of intertia and takes ages to stop spinning...
+	collisionShape = new btBoxShape(dim); //A collision shape determines collisions, it has no concept of mass inertia, etc. Many bodies can share a collision shape, but they should be the same shape.
 	motionState = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), pos)); //Initialise the motion state of the cube. This communicates the movement to the system based on the forces exerted on the object.
-	mass = 1; //Give it a mass of 1kg
+	mass = m; //Give it a mass of 1kg
 	btVector3 fallInertia(0, 0, 0); //Initial inertia
 	collisionShape->calculateLocalInertia(mass, fallInertia); //Calculates the inertia as it falls
 	btRigidBody::btRigidBodyConstructionInfo rigidBodyCI(mass, motionState, collisionShape, fallInertia); //If want to create lots of the bodies with the same parameters, only need to create one of these and pass that info to each body that is made
 	rigidBody = new btRigidBody(rigidBodyCI); //Create rigid body, the basic building block of all physics simulations. Deformation on the box is negated, no matter how much force is exerted.
 	//rigidBody->setLinearVelocity(btVector3(0, 0, 0)); //No initial speed
 	//rigidBody->setAngularVelocity(btVector3(0, 0, 0)); 
+	rigidBody->setFriction(2);
 	return rigidBody;
 }
 
@@ -832,45 +833,85 @@ void App::applyForce(Object o, unsigned long t, float sx, float sy, float sz) {
 	float accy = (2 * (sy - u[1] * t)) / (t*t);
 	float accz = (2 * (sz - u[2] * t)) / (t*t);
 	btScalar m = o.getMass(); //get the mass
-	float scale = 3; //A value to scale the force by
-	float gravity = 9.81/scale; //Gravity scaled
-	float zscale = 2.0; //The amount that the z is scaled by. This allows the user to not have to move as much as can have issues with not being able to move the whole z direction in one go
-	float yscale = 1.0;
-	float xscale = 1.0;
+	float scale = 2; //A value to scale the force by
+	float zscale = 1.0*scale; //The amount that the z is scaled by. This allows the user to not have to move as much as can have issues with not being able to move the whole z direction in one go
+	float yscale = 1.0*scale;
+	float xscale = 1.5*scale;
+	float gravity = 9.81 / (yscale * scale); //Gravity scaled
 	btVector3 force = scale * btVector3(m*accx*xscale, m*(accy+gravity)*yscale, m*accz*zscale); //Calculate the overall force. The positive gravity force allows the cube to not fall.
 	o.getRigidBody()->applyCentralForce(force);
 }
 
 void App::applyNegativeGravity(Object o) {
 	btScalar m = o.getMass(); //get the mass
-	float scale = 3; //A value to scale the force by
+	float scale = 2; //A value to scale the force by
 	float gravity = 9.81 / scale; //Gravity scaled
 	btVector3 force = scale * btVector3( 0, m*(-gravity),0); //Calculate the overall force. The positive gravity force allows the cube to not fall.
 	o.getRigidBody()->applyCentralForce(force);
 }
 
-bool App::menuOpenGesture(deque<int> poses) {
+bool App::menuCloseGesture(deque<int> poses) {
 	bool result = false;
-	int openCounter = 0;
-	int closedCounter = 0;
-	for (int i = 0; i < poses.size(); i++){
-		if (poses[i] == 1 && openCounter == closedCounter) {
-			openCounter++;
-		}
-		else if (poses[i] == 2 && openCounter > closedCounter) {
-			closedCounter++;
+	int oneFingerCounter = 0;
+	for (int i = 0; i < poses.size(); i++) {
+		if (poses[i] == 3) {
+			oneFingerCounter++;
 		}
 	}
-	if (openCounter >= 3 && closedCounter >= 3) {
+	if (oneFingerCounter <= poses.size() / 2) {
 		result = true;
 	}
 	return result;
 }
 
-void App::makeCube(float x, float y, float z, vector<Cube*> *cubes, vector<int> *cubeState, vector<int> *cubeState2) {
+bool App::menuOpenGesture(deque<int> poses) {
+	bool result = false;
+	int openCounter = 0;
+	int closedCounter = 1;
+	int oneCounter = 0;
+	int oneFingerCounter = 0;
+	for (int i = 0; i < poses.size(); i++){
+		if (poses[i] == 1 && openCounter == oneCounter) {
+			openCounter++;
+		}
+		else if (poses[i] == 2 && openCounter > oneCounter) {
+			oneCounter++;
+		}
+		/*else if (poses[i] == 2 && oneCounter > closedCounter) {
+			closedCounter++;
+		}*/
+		if (poses[i] == 3) {
+			oneFingerCounter++;
+		}
+	}
+	/*if (openCounter >= 3 && closedCounter >= 1 && oneCounter >= 3) {
+		result = true;
+	}*/
+	if (oneFingerCounter >= poses.size()*0.8) {
+		result = true;
+	}
+	return result;
+}
+
+void App::makeCube(float x, float y, float z, float mass, float xdim, float ydim, float zdim, vector<Cube*> *cubes, vector<int> *cubeState, vector<int> *cubeState2) {
 	Cube* cube1 = new Cube();
-	dynamicsWorld->addRigidBody(cube1->setUpPhysics(btVector3(x, y, z))); //Add to the world
+	cube1->setMass(mass);
+	
+	dynamicsWorld->addRigidBody(cube1->setUpPhysics(btVector3(x, y, z), mass, btVector3(xdim, ydim, zdim))); //Add to the world
+	cube1->setNum(cubes->size());
+	cube1->setColour(1, 1, 0);
+	cube1->doBuffers();
 	cubes->push_back(cube1);
 	cubeState->push_back(0);
 	cubeState2->push_back(0);
+}
+
+Cube* App::replace(Object o, float x, float y, float z, float mass, float xdim, float ydim, float zdim) {
+	dynamicsWorld->removeRigidBody(o.getRigidBody());
+	Cube* newcube = new Cube();
+	newcube->setMass(mass);
+	newcube->setScaleFactor(o.getScaleFactor());
+	dynamicsWorld->addRigidBody(newcube->setUpPhysics(btVector3(x, y, z), mass, btVector3(xdim, ydim, zdim))); //Add to the world
+	newcube->setNum(o.getNum());
+	return newcube;
 }

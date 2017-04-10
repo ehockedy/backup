@@ -35,7 +35,7 @@ int checkstep = 2;
 bool freemove = false; //whether can move freely around the environment
 int ksize = 45;
 int sigma = 100;
-int checkSize = 60;
+int checkSize = 50;
 int fps = 120;
 int maxDepth = 1000;
 int movement = 0;
@@ -88,16 +88,20 @@ float internalX = 0;
 float internalY = 0;
 float internalZ = 0;
 
-float externalX = 0;
-float externalY = 0;
-float externalZ = 0;
+int currentCube = 7;
 
-int currentCube = 0;
+float currentXLeft = 0;
+float currentYLeft = 0;
+float currentZLeft = 0;
 
+float internalXLeft = 0;
+float internalYLeft = 0;
+float internalZLeft = 0;
 
-//to do:
-//MAKE ACTIVE CUBE THE HIGHLIGHTED ONE
+int currentCubeLeft = 4;
 
+int prevCube = -1;
+int prevCubeLeft = -1;
 
 void main()
 {
@@ -216,6 +220,12 @@ void main()
 	currentX = hand1.xpos;
 	currentY = hand1.ypos;
 	currentZ = hand1.depth;
+	currentXLeft = hand2.xpos;
+	currentYLeft = hand2.ypos;
+	currentZLeft = hand2.depth;
+	if (twoHands == false) {
+		currentCubeLeft = -1;
+	}
 
 	vector<Point> leftHandHull;
 	Point fingertip1;
@@ -228,13 +238,20 @@ void main()
 
 	while (run && a.continueProcessing())
 	{
+		counter = (counter + 1)%20 +1;
+		
 		stepTime = GetTickCount();
 
 		if (firstFrame != true) {
 			cdepth.Update(); //Fills in depthArr
-			cdepth.FindHands(false, checkstep, twoHands); //Find the position of the hand(s)
+			if (counter == 0) {
+				cdepth.FindHands(true, checkstep, twoHands); //Find the position of the hand(s)
+			}
+			else {
+				cdepth.FindHands(false, checkstep, twoHands); //Find the position of the hand(s)
+			}
 		}
-		
+
 		if (twoHands) {
 			if (firstFrame != true) {
 				hand1 = cdepth.getHand1();
@@ -308,15 +325,15 @@ void main()
 		a.popMat();
 
 		int sensitivityScale = 10.0; //higher value, more need to move hand
-		if (menuOpen == false && rightPose == 3 && rightPoses[rightPoses.size() - 3] == 3 && rightPoses[rightPoses.size() - 5] == 3 && rightPoses[rightPoses.size() - 7] == 3) {
+		/*if (menuOpen == false && rightPose == 3 && rightPoses[rightPoses.size() - 3] == 3 && rightPoses[rightPoses.size() - 5] == 3 && rightPoses[rightPoses.size() - 7] == 3) {
 			offsetx = -((float)cdepth.getWidth() / 2.0 - (float)hand1.xpos) / sensitivityScale; //the distance from the original position, used when resetting position
-			offsety = -((float)cdepth.getHeight() / 2.0 - (float)hand1.ypos- 50) / sensitivityScale;
+			offsety = -((float)cdepth.getHeight() / 2.0 - (float)hand1.ypos - 50) / sensitivityScale;
 			offsetz = ((cdepth.getMaxDepth() - cdepth.getMinDepth()) / 2.0 - 80 - (float)hand1.depth + offsetz) / sensitivityScale;
 		}
-		cursor3dRight.setXYZ(((float)cdepth.getWidth() / 2.0 - (float)hand1.xpos) / sensitivityScale + offsetx, ((float)cdepth.getHeight() / 2.0 - (float)hand1.ypos + offsety) / sensitivityScale + offsety, -((cdepth.getMaxDepth() - cdepth.getMinDepth()) / 2.0 - 80 - (float)hand1.depth + offsetz) / (sensitivityScale/1.5) + offsetz);
+		cursor3dRight.setXYZ(((float)cdepth.getWidth() / 2.0 - (float)hand1.xpos) / sensitivityScale + offsetx, ((float)cdepth.getHeight() / 2.0 - (float)hand1.ypos + offsety) / sensitivityScale + offsety, -((cdepth.getMaxDepth() - cdepth.getMinDepth()) / 2.0 - 80 - (float)hand1.depth + offsetz) / (sensitivityScale / 1.5) + offsetz);
 
 		if (twoHands) {
-			if (menuOpen == false && leftPose == 3 && leftPoses[leftPoses.size() - 3] == 3  && leftPoses[leftPoses.size() - 5] == 3 && leftPoses[leftPoses.size() - 7] == 3) {
+			if (menuOpen == false && leftPose == 3 && leftPoses[leftPoses.size() - 3] == 3 && leftPoses[leftPoses.size() - 5] == 3 && leftPoses[leftPoses.size() - 7] == 3) {
 				offsetx2 = -((float)cdepth.getWidth() / 2.0 - (float)hand2.xpos) / sensitivityScale;
 				offsety2 = -((float)cdepth.getHeight() / 2.0 - (float)hand2.ypos - 50) / sensitivityScale;
 				offsetz2 = ((cdepth.getMaxDepth() - cdepth.getMinDepth()) / 2.0 - 80 - (float)hand2.depth + offsetz2) / sensitivityScale;
@@ -335,7 +352,7 @@ void main()
 
 				//letting go of cube
 				//if (cubeState[c] == 1 && rightPose != 2 && rightPoses.back() != 2 && rightPoses[rightPoses.size() - 2] == 2 && abs(prevHand1.depth - prevPrevHand1.depth) < 15 && abs(prevHand1.xpos - prevPrevHand1.xpos) + abs(prevHand1.ypos - prevPrevHand1.ypos) < 10) { // because can fly off a little if opening hand due to movement of central point and change of depth
-				if (cubeState[c] == 1 && rightPose != 2 && rightPoses.back() == 2  && abs(hand1.depth - prevHand1.depth) < 15 && abs(hand1.xpos - prevHand1.xpos) + abs(hand1.ypos - prevHand1.ypos) < 10) { //15, 10 are original because can fly off a little if opening hand due to movement of central point and change of depth
+				if (cubeState[c] == 1 && rightPose != 2 && rightPoses.back() == 2 && abs(hand1.depth - prevHand1.depth) < 15 && abs(hand1.xpos - prevHand1.xpos) + abs(hand1.ypos - prevHand1.ypos) < 10) { //15, 10 are original because can fly off a little if opening hand due to movement of central point and change of depth
 					cube->getRigidBody()->setLinearVelocity(btVector3(0, 0, 0));
 					cube->getRigidBody()->setAngularVelocity(btVector3(0, 0, 0));
 					cubeState[c] = 0; //not doing anything
@@ -386,8 +403,8 @@ void main()
 
 
 					//both hands interacing with the same cube
-					if ((leftCubeChosen == false && cubeChosen == false && cursor3dLeft.within(*cube, range, range, range) && cursor3dRight.within(*cube, range, range, range)) 
-						|| (leftCubeState[c] == 1 && cubeState[c] == 1) 
+					if ((leftCubeChosen == false && cubeChosen == false && cursor3dLeft.within(*cube, range, range, range) && cursor3dRight.within(*cube, range, range, range))
+						|| (leftCubeState[c] == 1 && cubeState[c] == 1)
 						|| (leftCubeState[c] == 1 && cursor3dRight.within(*cube, range, range, range) && cubeChosen == false)
 						|| (cubeState[c] == 1 && cursor3dLeft.within(*cube, range, range, range) && leftCubeChosen == false)) {
 						cube->setColour(0.5, 0.5, 0.5);
@@ -426,13 +443,13 @@ void main()
 						cube->doBuffers();
 					}
 				}
-				
+
 				if (twoHands == false) {
 					cube->setXYZ(cube->getRigidBody()->getCenterOfMassPosition()[0], cube->getRigidBody()->getCenterOfMassPosition()[1], cube->getRigidBody()->getCenterOfMassPosition()[2]);
 
 					if ((cubeChosen == false && cursor3dRight.within(*cube, range, range, range)) || cubeState[c] == 1) {
-						cube->setColour(1, 1, 1);
-						cube->doBuffers();
+						//cube->setColour(1, 1, 1);
+						//cube->doBuffers();
 						cubeChosen = true;
 						mostRecentCube = c;
 
@@ -448,26 +465,26 @@ void main()
 					}
 				}
 			}
+			a.pushMat();
+			a.updateCube(*cube);
+			a.scale(cube->getScaleFactor(), cube->getScaleFactor(), cube->getScaleFactor()); //If double cube size, scale double as well, but after updated cube
+			a.render(*cube);
+			a.popMat();
+
+			//cube->setXYZ(cube->getRigidBody()->getCenterOfMassPosition()[0], cube->getRigidBody()->getCenterOfMassPosition()[1], cube->getRigidBody()->getCenterOfMassPosition()[2]);
+
+			if (cubeState[c] == 1) {
+				xaxis.setColour(1, 0, 0);
+				xaxis.doBuffers();
 				a.pushMat();
-				a.updateCube(*cube);
-				a.scale(cube->getScaleFactor(), cube->getScaleFactor(), cube->getScaleFactor()); //If double cube size, scale double as well, but after updated cube
-				a.render(*cube);
+				a.translate(cube->xpos, cube->ypos, cube->zpos);
+				a.scale(axisSize, 100, axisSize);
+				a.render(xaxis);
 				a.popMat();
+			}
+		}*/
 
-				//cube->setXYZ(cube->getRigidBody()->getCenterOfMassPosition()[0], cube->getRigidBody()->getCenterOfMassPosition()[1], cube->getRigidBody()->getCenterOfMassPosition()[2]);
-
-				if (cubeState[c] == 1) {
-					xaxis.setColour(1, 0, 0);
-					xaxis.doBuffers();
-					a.pushMat();
-					a.translate(cube->xpos, cube->ypos, cube->zpos);
-					a.scale(axisSize, 100, axisSize);
-					a.render(xaxis);
-					a.popMat();
-				}
-		}
-		
-		if (cubeChosen == false && menuOpen == false) { //cant go in earlier if since must check cubeChosen after all have been iterated through
+		/*if (cubeChosen == false && menuOpen == false) { //cant go in earlier if since must check cubeChosen after all have been iterated through
 			a.pushMat();
 			a.translate(cursor3dRight.xpos, cursor3dRight.ypos, cursor3dRight.zpos);
 			a.scale(0.4, 0.4, 0.4);
@@ -498,82 +515,174 @@ void main()
 			a.scale(0.4, 0.4, 0.4);
 			a.render(cursor3dLeft);
 			a.popMat();
-		}
+		}*/
 
 		//currentX = cubes[currentCube]->xpos;
 		//currentY = cubes[currentCube]->ypos;
 		//currentZ = cubes[currentCube]->zpos;
-		internalX = hand1.xpos - currentX;
-		internalY = hand1.ypos - currentY;
-		internalZ = hand1.depth - currentZ;
-		float cubeSize = 20;
-		int closest = -1;
-		float dist = 1000;
-		
-		if (sqrt(internalX*internalX + internalY*internalY + internalZ*internalZ) > cubeSize) {
-			btVector3 vec1(hand1.xpos, hand1.ypos, hand1.depth);
-			btVector3 vec2(currentX, currentY, currentZ);
-			btVector3 cubeToHand = (vec2 - vec1).normalize();
+		if(menuOpen == false)
+		{
+			internalX = hand1.xpos - currentX;
+			internalY = hand1.ypos - currentY;
+			internalZ = hand1.depth - currentZ;
+			float cubeSize = 25;
+			int closest = -1;
+			float dist = 1000;
 
-			//cout << (vec2 - vec1)[0] << " " << (vec2 - vec1)[1] << " " << (vec2 - vec1)[2] << " " << (vec2 - vec1).norm() << endl;// << " " << cubeToHand[1] << " " << cubeToHand[2] << endl;
-
-			float cosineSimilarity = 0.0;
-			int nextCube = -1;
-			btVector3 currentCubeVec(cubes[currentCube]->xpos, cubes[currentCube]->ypos, -cubes[currentCube]->zpos);
-			btVector3 otherCubeVec;
-			btVector3 cubeToCube;
-			for (int c = 0; c < cubes.size(); c++) {
-				if (c != currentCube) {
-					otherCubeVec = btVector3(cubes[c]->xpos, cubes[c]->ypos, -cubes[c]->zpos);
-					cubeToCube = (otherCubeVec - currentCubeVec);// .normalize();
-					if (cubeToHand.dot(cubeToCube)/(cubeToHand.norm()*cubeToCube.norm()) > cosineSimilarity && (otherCubeVec - currentCubeVec).norm() < 5) { //TRY WITH UNNORMALIZED
-						cosineSimilarity = cubeToHand.dot(cubeToCube) / (cubeToHand.norm()*cubeToCube.norm());
-						//cout << c << " " << cosineSimilarity << endl;
-						nextCube = c;
-						//dist = (otherCubeVec - currentCubeVec).norm();
-					}
-				}
+			bool notMoving = false;
+			if (cubes[currentCube]->getRigidBody()->getLinearVelocity().norm() < 0.5){ //can only choose another cube when current one isn't moving
+				notMoving = true;
 			}
 
-			if (nextCube == -1) {
-				cosineSimilarity = 0.7;
+			if (sqrt((internalX*internalX) + (internalY*internalY) + (internalZ*internalZ)*2) > cubeSize && rightPose != 2 && notMoving) {
+				btVector3 vec1(hand1.xpos, hand1.ypos, hand1.depth);
+				btVector3 vec2(currentX, currentY, currentZ);
+				btVector3 cubeToHand = (vec2 - vec1);// .normalize();
+
+				float cosineSimilarity = 0.9;
+				int nextCube = -1;
+				int nextCube2 = -1;
+				btVector3 currentCubeVec(cubes[currentCube]->xpos, cubes[currentCube]->ypos, -cubes[currentCube]->zpos);
+				btVector3 otherCubeVec;
+				btVector3 cubeToCube;
 				for (int c = 0; c < cubes.size(); c++) {
 					if (c != currentCube) {
 						otherCubeVec = btVector3(cubes[c]->xpos, cubes[c]->ypos, -cubes[c]->zpos);
-						cubeToCube = (otherCubeVec - currentCubeVec).normalize();
-						if (cubeToHand.dot(cubeToCube) > cosineSimilarity){// && (otherCubeVec - currentCubeVec).norm() < 2) { //TRY WITH UNNORMALIZED
-							cosineSimilarity = cubeToHand.dot(cubeToCube) / (cubeToHand.norm()*cubeToCube.norm());
-							//cout << c << " " << (otherCubeVec - currentCubeVec).norm() << endl;
-							nextCube = c;
-							//dist = (otherCubeVec - currentCubeVec).norm();
+						cubeToCube = (otherCubeVec - currentCubeVec);
+
+						float distComparison = (cubeToCube - cubeToHand / 10).norm(); //favour the closer cubes
+						float cosineComparison = cubeToHand.dot(cubeToCube) / (cubeToHand.norm()*cubeToCube.norm());
+						if (distComparison < dist && cosineComparison > 0.25) {
+							dist = distComparison;
+							nextCube2 = c;
 						}
 					}
 				}
+
+				if (nextCube2 != -1) {
+					currentCube = nextCube2;
+					currentX = hand1.xpos;
+					currentY = hand1.ypos;
+					currentZ = hand1.depth;
+				}
 			}
 
-			if (nextCube != -1) {
-				currentCube = nextCube;
-				currentX = hand1.xpos;
-				currentY = hand1.ypos;
-				currentZ = hand1.depth;
+			if (rightPose == 2) {
+				a.applyForce(*cubes[currentCube], GetTickCount() - stepTime, (prevHand1.xpos - hand1.xpos) * 1000, (prevHand1.ypos - hand1.ypos) * 1000, (hand1.depth - prevHand1.depth) * 1000);
+			}
+			else if (rightPoses.back() == 2 && rightPose != 2 && abs(hand1.depth - prevHand1.depth) < 15 && abs(hand1.xpos - prevHand1.xpos) + abs(hand1.ypos - prevHand1.ypos) < 10) { //15, 10 are original because can fly off a little if opening hand due to movement of central point and change of depth
+				cubes[currentCube]->getRigidBody()->setLinearVelocity(btVector3(0, 0, 0));
+				cubes[currentCube]->getRigidBody()->setAngularVelocity(btVector3(0, 0, 0));
+			}
+		
+
+			if (twoHands) {
+				internalXLeft = hand2.xpos - currentXLeft;
+				internalYLeft = hand2.ypos - currentYLeft;
+				internalZLeft = hand2.depth - currentZLeft;
+				float cubeSize = 25;
+				int closest = -1;
+				float dist = 1000;
+
+				bool notMoving = false;
+				if (cubes[currentCubeLeft]->getRigidBody()->getLinearVelocity().norm() < 0.5) { //can only choose another cube when current one isn't moving
+					notMoving = true;
+				}
+
+				if (sqrt(internalXLeft*internalXLeft + internalYLeft*internalYLeft + internalZLeft*internalZLeft) > cubeSize && leftPose != 2 && notMoving) {
+					btVector3 vec1(hand2.xpos, hand2.ypos, hand2.depth);
+					btVector3 vec2(currentXLeft, currentYLeft, currentZLeft);
+					btVector3 cubeToHand = (vec2 - vec1);// .normalize();
+
+					float cosineSimilarity = 0.9;
+					int nextCube = -1;
+					int nextCube2 = -1;
+					btVector3 currentCubeVec(cubes[currentCubeLeft]->xpos, cubes[currentCubeLeft]->ypos, -cubes[currentCubeLeft]->zpos);
+					btVector3 otherCubeVec;
+					btVector3 cubeToCube;
+					for (int c = 0; c < cubes.size(); c++) {
+						if (c != currentCubeLeft) {
+							otherCubeVec = btVector3(cubes[c]->xpos, cubes[c]->ypos, -cubes[c]->zpos);
+							cubeToCube = (otherCubeVec - currentCubeVec);
+
+							float distComparison = (cubeToCube - cubeToHand / 10).norm(); //favour the closer cubes
+							float cosineComparison = cubeToHand.dot(cubeToCube) / (cubeToHand.norm()*cubeToCube.norm());
+							if (distComparison < dist && cosineComparison > 0.25) {
+								dist = distComparison;
+								nextCube2 = c;
+							}
+						}
+					}
+
+					if (nextCube2 != -1) {
+						currentCubeLeft = nextCube2;
+						currentXLeft = hand2.xpos;
+						currentYLeft = hand2.ypos;
+						currentZLeft = hand2.depth;
+					}
+				}
+
+				if (leftPose == 2) {
+					a.applyForce(*cubes[currentCubeLeft], GetTickCount() - stepTime, (prevHand2.xpos - hand2.xpos) * 1000, (prevHand2.ypos - hand2.ypos) * 1000, (hand2.depth - prevHand2.depth) * 1000);
+				}
+				else if (leftPoses.back() == 2 && leftPose != 2 && abs(hand2.depth - prevHand2.depth) < 15 && abs(hand2.xpos - prevHand2.xpos) + abs(hand2.ypos - prevHand2.ypos) < 10) { //15, 10 are original because can fly off a little if opening hand due to movement of central point and change of depth
+					cubes[currentCubeLeft]->getRigidBody()->setLinearVelocity(btVector3(0, 0, 0));
+					cubes[currentCubeLeft]->getRigidBody()->setAngularVelocity(btVector3(0, 0, 0));
+				}
 			}
 		}
 
-		if (closest != -1) {
-			currentCube = closest;
-			currentX = hand1.xpos;
-			currentY = hand1.ypos;
-			currentZ = hand1.depth;
+
+		for (int c = 0; c < cubes.size(); c++) {
+			Cube* cube = cubes[c];
+			if (currentCube == currentCubeLeft && currentCube == c) {
+				if (rightPose == 2 && leftPose == 2) {
+					a.applyNegativeGravity(*cube); //Since anti gravity force is applied for each hand, this negates the effect of doublel anti-gravity
+					float sizex = cube->getRigidBody()->getCenterOfMassPosition()[0];
+					float sizey = cube->getRigidBody()->getCenterOfMassPosition()[1];
+					float sizez = cube->getRigidBody()->getCenterOfMassPosition()[2];
+					float distance = abs((float)hand1.xpos - (float)hand2.xpos) / 200; //moving away in x direction grows cube
+					if (sizex + distance > 15) {
+						a.setPosition(*cubes[currentCube], xRoomSize - distance - 0.1, sizey, sizez);
+					}
+					if (sizex - distance < -15) {
+						a.setPosition(*cubes[currentCube], -xRoomSize + distance + 0.1, sizey, sizez);
+					}
+					if (sizey - distance < 0) {
+						a.setPosition(*cubes[currentCube], sizex, 1 + distance, sizez);
+					}
+					if (sizez + distance > 10) {
+						a.setPosition(*cubes[currentCube], sizex, sizey, zRoomSizeBack - distance - 0.1);
+					}
+					if (sizez - distance < -15) {
+						a.setPosition(*cubes[currentCube], sizex, sizey, -zRoomSizeFront + distance + 0.1);
+					}
+					cube->setScaleFactor(distance);
+					cubes[currentCube] = a.replace(*cube, cube->getRigidBody()->getCenterOfMassPosition()[0], cube->getRigidBody()->getCenterOfMassPosition()[1], cube->getRigidBody()->getCenterOfMassPosition()[2], cube->getMass(), 1.0*cube->getScaleFactor(), 1.0*cube->getScaleFactor(), 1.0*cube->getScaleFactor());
+				}
+				cube->setColour(1, 1, 1);
+			}
+			else if (c != currentCube && c != currentCubeLeft && (prevCube == c || prevCubeLeft == c)) {
+				cube->setColour(1, 1, 0);
+			}
+			else if (c == currentCube && (prevCube == c || prevCubeLeft == c)) {
+				cube->setColour(0.9, 0.1, 0.1);
+			}
+			else if ((prevCube == c || prevCubeLeft == c)) {
+				cube->setColour(0.1, 0.1, 0.9);
+			}
+			cube->setXYZ(cube->getRigidBody()->getCenterOfMassPosition()[0], cube->getRigidBody()->getCenterOfMassPosition()[1], cube->getRigidBody()->getCenterOfMassPosition()[2]);
+			if ((prevCube == c || prevCubeLeft == c)){
+				cube->doBuffers();
+			}
+			a.pushMat();
+			a.updateCube(*cube);
+			a.scale(cube->getScaleFactor(), cube->getScaleFactor(), cube->getScaleFactor()); //If double cube size, scale double as well, but after updated cube
+			a.render(*cube);
+			a.popMat();
 		}
 
-		cubes[currentCube]->setColour(1, 0, 0);
-		cubes[currentCube]->doBuffers();
-		a.pushMat();
-		a.updateCube(*cubes[currentCube]);
-		a.scale(1.1, 1.1, 1.1);
-		a.render(*cubes[currentCube]);
-		a.popMat();
-
+	
 		
 
 		Mat noMenuImg;
@@ -632,34 +741,34 @@ void main()
 				if (rightPose == 3 && cursor.within(slider1, 15, 10) && cursor.within(tbar1,50,100)) { //move slider with finger. 100 is big enough to make sure whole slider covered, but is really irrelevant as this is just checking if slider is within x range of trackbar.
 					a.setPosition(slider1, cursor.getRigidBody()->getCenterOfMassPosition()[0], slider1.getRigidBody()->getCenterOfMassPosition()[1], 0);
 					slider1.setValue(abs((slider1.getRigidBody()->getCenterOfMassPosition()[0])-60)/4);
-					float sizex = cubes[mostRecentCube]->getRigidBody()->getCenterOfMassPosition()[0];
-					float sizey = cubes[mostRecentCube]->getRigidBody()->getCenterOfMassPosition()[1];
-					float sizez = cubes[mostRecentCube]->getRigidBody()->getCenterOfMassPosition()[2];
+					float sizex = cubes[currentCube]->getRigidBody()->getCenterOfMassPosition()[0];
+					float sizey = cubes[currentCube]->getRigidBody()->getCenterOfMassPosition()[1];
+					float sizez = cubes[currentCube]->getRigidBody()->getCenterOfMassPosition()[2];
 					float newDist = 1.0f*slider1.getValue() / 10.0; //distance between centre of cube and edge of cube
 					if (sizex + newDist > 15) {
-						a.setPosition(*cubes[mostRecentCube], xRoomSize - newDist-0.1, sizey, sizez); 
+						a.setPosition(*cubes[currentCube], xRoomSize - newDist-0.1, sizey, sizez);
 					}
 					if (sizex - newDist < -15) {
-						a.setPosition(*cubes[mostRecentCube], -xRoomSize + newDist+0.1, sizey, sizez);
+						a.setPosition(*cubes[currentCube], -xRoomSize + newDist+0.1, sizey, sizez);
 					}
 					if (sizey - newDist < 0) {
-						a.setPosition(*cubes[mostRecentCube], sizex, 1 + newDist, sizez);
+						a.setPosition(*cubes[currentCube], sizex, 1 + newDist, sizez);
 					}
 					if (sizez + newDist > 10) {
-						a.setPosition(*cubes[mostRecentCube], sizex, sizey, zRoomSizeBack - newDist-0.1);
+						a.setPosition(*cubes[currentCube], sizex, sizey, zRoomSizeBack - newDist-0.1);
 					}
 					if (sizez - newDist < -15) {
-						a.setPosition(*cubes[mostRecentCube], sizex, sizey, -zRoomSizeFront + newDist+0.1);
+						a.setPosition(*cubes[currentCube], sizex, sizey, -zRoomSizeFront + newDist+0.1);
 					}
 					//btCollisionShape* shape = new btBoxShape(btVector3(1.0f*slider1.getValue()/10.0, 1.0f * slider1.getValue()/10.0, 1.0f * slider1.getValue()/10.0));
 					//cubes[mostRecentCube]->getRigidBody()->setCollisionShape(shape);
 					//a.setPosition(cube1, 0, 20, 0);
-					cubes[mostRecentCube]->setScaleFactor(slider1.getValue() / 10.0);
+					cubes[currentCube]->setScaleFactor(slider1.getValue() / 10.0);
 					//cube1.getRigidBody()->setMassProps(5.0f, btVector3(0.0, 0.0, 0.0));
-					cubes[mostRecentCube] = a.replace(*cubes[mostRecentCube], cubes[mostRecentCube]->getRigidBody()->getCenterOfMassPosition()[0], cubes[mostRecentCube]->getRigidBody()->getCenterOfMassPosition()[1], cubes[mostRecentCube]->getRigidBody()->getCenterOfMassPosition()[2], cubes[mostRecentCube]->getMass() , 1.0*cubes[mostRecentCube]->getScaleFactor(), 1.0*cubes[mostRecentCube]->getScaleFactor(), 1.0*cubes[mostRecentCube]->getScaleFactor());
+					cubes[currentCube] = a.replace(*cubes[currentCube], cubes[currentCube]->getRigidBody()->getCenterOfMassPosition()[0], cubes[currentCube]->getRigidBody()->getCenterOfMassPosition()[1], cubes[currentCube]->getRigidBody()->getCenterOfMassPosition()[2], cubes[currentCube]->getMass() , 1.0*cubes[currentCube]->getScaleFactor(), 1.0*cubes[currentCube]->getScaleFactor(), 1.0*cubes[currentCube]->getScaleFactor());
 					//cubes[mostRecentCube]->setScaleFactor(slider1.getValue() / 10.0);
-					cubes[mostRecentCube]->setColour(1, 1, 0);
-					cubes[mostRecentCube]->doBuffers();
+					cubes[currentCube]->setColour(1, 1, 0);
+					cubes[currentCube]->doBuffers();
 				}
 				a.updatePosition(slider1);
 				a.render(slider1);
@@ -675,9 +784,9 @@ void main()
 						newMass = newMass*newMass*newMass*newMass;
 					}
 					//Cube* oldCube = (cubes[mostRecentCube]);
-					cubes[mostRecentCube] = a.replace(*cubes[mostRecentCube], cubes[mostRecentCube]->getRigidBody()->getCenterOfMassPosition()[0], cubes[mostRecentCube]->getRigidBody()->getCenterOfMassPosition()[1], cubes[mostRecentCube]->getRigidBody()->getCenterOfMassPosition()[2], newMass, 1.0*cubes[mostRecentCube]->getScaleFactor(), 1.0*cubes[mostRecentCube]->getScaleFactor(), 1.0*cubes[mostRecentCube]->getScaleFactor());
-					cubes[mostRecentCube]->setColour(1, 1, 0);
-					cubes[mostRecentCube]->doBuffers();
+					cubes[currentCube] = a.replace(*cubes[currentCube], cubes[currentCube]->getRigidBody()->getCenterOfMassPosition()[0], cubes[currentCube]->getRigidBody()->getCenterOfMassPosition()[1], cubes[currentCube]->getRigidBody()->getCenterOfMassPosition()[2], newMass, 1.0*cubes[currentCube]->getScaleFactor(), 1.0*cubes[currentCube]->getScaleFactor(), 1.0*cubes[currentCube]->getScaleFactor());
+					cubes[currentCube]->setColour(1, 1, 0);
+					cubes[currentCube]->doBuffers();
 					//cubes[mostRecentCube]->getRigidBody()->setMassProps(newMass, cubes[mostRecentCube]->getRigidBody()->getLocalInertia());
 					//cubes[mostRecentCube]->setMass(newMass);
 					//cout << cubes[mostRecentCube]->getMass() << endl;
@@ -715,7 +824,7 @@ void main()
 			glReadPixels(0, 0, justMenu.cols, justMenu.rows, GL_BGR, GL_UNSIGNED_BYTE, justMenu.data);
 		}
 		
-		if(a.menuOpenGesture(rightPoses) && menuCounter > frameCheck){ //go from open to closed
+		if (a.menuCloseGesture(rightPoses)){// && menuCounter > frameCheck){ //go from open to closed
 			menuOpen = false;
 			menuCounter = 0;
 		}
@@ -746,10 +855,12 @@ void main()
 		prevCursor3d.setXYZ(cursor3dRight.xpos, cursor3dRight.ypos, cursor3dRight.zpos);
 		rightPoses.pop_front();
 		rightPoses.push_back(rightPose);
+		prevCube = currentCube;
 		if (twoHands) {
 			leftPoses.pop_front();
 			leftPoses.push_back(leftPose);
 			prevHand2 = hand2;
+			prevCubeLeft = currentCubeLeft;
 		}
 		
 		firstFrame = false;

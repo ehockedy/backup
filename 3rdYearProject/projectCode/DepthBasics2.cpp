@@ -340,7 +340,8 @@ void CDepthBasics::UpdatePreviousHands(pixel h1, pixel h2) {
 pair<vector<Point>, Point> CDepthBasics::ProcessHand(pixel pix, bool draw, int handNum)
 {
 	Mat hand1 = getHandArea(imgD, pix);
-	//float proportion = getHandProportion(hand1, pix.depth);
+	float proportion = getHandProportion(hand1, pix.depth);
+	//cout << proportion << endl;
 	vector<vector<Point> > contours = getContours(hand1, pix, &imgD);
 	int contourIndex = getContourIndex(contours);
 	vector<Point> convexHull = getHull(contours[contourIndex]);
@@ -387,6 +388,14 @@ Mat CDepthBasics::Draw(int divisor) //divisor is how much the image is scaled do
 	Mat smallImg(cDepthHeight/divisor, cDepthWidth/ divisor, CV_8UC1);
 	resize(imgD, smallImg, smallImg.size());
 	//imshow("Hand output", smallImg);
+	return smallImg;
+}
+
+Mat CDepthBasics::DrawTrain(int divisor) //divisor is how much the image is scaled down by
+{
+	Mat smallImg(cDepthHeight / divisor, cDepthWidth / divisor, CV_8UC1);
+	resize(imgD, smallImg, smallImg.size());
+	imshow("Hand output", smallImg);
 	return smallImg;
 }
 
@@ -604,7 +613,15 @@ vector<vector<Point> > CDepthBasics::getContours(Mat img, pixel p, Mat *imgDraw)
 	vector<vector<Point> > contours;
 	vector<Vec4i> hierarchy;
 
+	
 	int thresh = p.depth - 40;//the depth away from the central pixel that is allowed to be included in the hand region
+	if (p.depth <= 40 && p.depth > 1) { //stop the square from appearing
+		thresh = 1;
+	}
+	else if(p.depth <= 1){
+		thresh = -1;
+	}
+
 	threshold(outImg, outImg, thresh, 255, THRESH_BINARY);
 
 	/// Find contours

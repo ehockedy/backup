@@ -49,7 +49,6 @@ void main2()
 
 	CDepthBasics cdepth;
 	ML ml;
-	ml.Train();
 	cdepth.SetUp(twoHands2, ksize2, sigma2, checkSize2, draw2, checkstep2, maxDepth2);
 
 	while (run2)
@@ -71,8 +70,10 @@ void main2()
 		if (draw2)
 		{
 			cdepth.DrawLeftClassification(pose);
-			cdepth.Draw(1);
+			cdepth.DrawTrain(1);
 		}
+
+
 		int key = waitKey((int)(1000 / fps2));
 		if (key == 'z')
 		{
@@ -92,10 +93,15 @@ void main2()
 			output2 << "3," << data;
 			cout << "pose 3" << endl;
 		}
+		else if (key == 't') {
+			ml.Train();
+		}
 		else if (key != -1)
 		{
 			run2 = false;
 		}
 
 	}
+
+
 }
