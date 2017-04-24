@@ -20,7 +20,7 @@ public:
 
 	void Train();
 	int Predict(std::vector<cv::Point> convexHull, pixel pix);
-
+	std::string getMLTrainData(std::vector<cv::Point> hullPoints, pixel centralPoint);
 private:
 	shark::RFClassifier model;
 	int classify(shark::Data<shark::RealVector> prediction, int sampleNum, double confidenceThreshold); //Chooses class from 1 to n, or 0 if unsure, sampleNum is for is there is more than 1 piece of data, it chooses the sampleNumth piece, confidenceThreshold is the value, below which the unknown label is returned.

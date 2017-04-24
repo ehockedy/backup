@@ -858,7 +858,7 @@ bool App::menuCloseGesture(deque<int> poses) {
 			oneFingerCounter++;
 		}
 	}
-	if (oneFingerCounter <= poses.size() / 2) {
+	if (oneFingerCounter <= 0) {
 		result = true;
 	}
 	return result;
@@ -891,6 +891,24 @@ bool App::menuOpenGesture(deque<int> poses) {
 		result = true;
 	}
 	return result;
+}
+
+bool App::resetGesture(deque<int> poses) {
+	bool reset = false;
+	int closed = 0;
+	int open = 0;
+	for (int i = 0; i < poses.size(); i++) {
+		if (poses[i] == 1 && closed == open) {
+			open++;
+		}
+		else if (poses[i] == 2 && closed < open) {
+			closed++;
+		}
+	}
+	if (closed >= 2 && open >= 3) {
+		reset = true;
+	}
+	return reset;
 }
 
 void App::makeCube(float x, float y, float z, float mass, float xdim, float ydim, float zdim, vector<Cube*> *cubes, vector<int> *cubeState, vector<int> *cubeState2) {

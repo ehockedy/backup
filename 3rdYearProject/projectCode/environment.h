@@ -171,6 +171,7 @@ public:
 	glm::mat4 getP() { return Projection; };
 	bool menuOpenGesture(std::deque<int> poses);
 	bool menuCloseGesture(std::deque<int> poses);
+	bool resetGesture(std::deque<int> poses);
 	btVector3 getGravity() { return dynamicsWorldMenu->getGravity(); };
 	void setOglimg(cv::Mat img) { oglimg = img; };
 	void menuLightingOff() {glUniform1i(menuUniformLocation, 1);};

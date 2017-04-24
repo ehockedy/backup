@@ -72,6 +72,8 @@ public:
 	/// </summary>
 	cv::Mat Draw(int divisor);
 
+	cv::Mat DrawTrain(int divisor);
+
 	/// <summary>
 	/// Returns the first had info
 	/// </summary>
@@ -101,6 +103,10 @@ private:
 
     // Depth reader
     IDepthFrameReader*      m_pDepthFrameReader;
+
+	///
+	IColorFrameReader* m_pColourFrameReader;
+	///
 
     RGBQUAD*                m_pDepthRGBX; //Hold Colour info
 	BYTE*					depthArr;	//Holds the depth info straight from the Kinect

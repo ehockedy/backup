@@ -40,8 +40,11 @@ CDepthBasics::CDepthBasics() :
 	minDepth(500),
 	maxDepth(1200),
     m_pKinectSensor(NULL),
-    m_pDepthFrameReader(NULL)
-    //m_pDepthRGBX(NULL)
+    m_pDepthFrameReader(NULL),
+	///
+	m_pColourFrameReader(NULL)
+    ///
+	//m_pDepthRGBX(NULL)
 {
     // create heap storage for depth pixel data in RGBX format
     //m_pDepthRGBX = new RGBQUAD[cDepthWidth * cDepthHeight]; //RGBQUAD has 4 values
@@ -131,7 +134,17 @@ void CDepthBasics::Update()
 
     IDepthFrame* pDepthFrame = NULL;
 
-    HRESULT hr = m_pDepthFrameReader->AcquireLatestFrame(&pDepthFrame);
+	HRESULT hr = m_pDepthFrameReader->AcquireLatestFrame(&pDepthFrame);
+
+	///
+	//IColorFrame* colourFrame = NULL;
+	//hr = m_pColourFrameReader->AcquireLatestFrame(&colourFrame);
+	//hr = m_pColourFrameReader->
+	///
+	//IKinectSensor *s;
+	//s->
+
+	//HRESULT hr = m_pDepthFrameReader->AcquireLatestFrame(&pDepthFrame);
 
     if (SUCCEEDED(hr))
     {
@@ -144,11 +157,24 @@ void CDepthBasics::Update()
         UINT nBufferSize = 0;
         UINT16 *pBuffer = NULL;
 
-        hr = pDepthFrame->get_RelativeTime(&nTime);
+		////
+		//BYTE *cBuffer = NULL;
+		////
+
+        hr = pDepthFrame->get_RelativeTime(&nTime);////
+
+		///
+		//INT64 nTime2 = 0;
+		//hr = colourFrame->get_RelativeTime(&nTime2);
+		///
 
         if (SUCCEEDED(hr))
         {
             hr = pDepthFrame->get_FrameDescription(&pFrameDescription);
+
+			///
+			//hr = colourFrame->get_FrameDescription(&pFrameDescription);
+			///
         }
 
         if (SUCCEEDED(hr))
@@ -173,12 +199,18 @@ void CDepthBasics::Update()
 
         if (SUCCEEDED(hr))
         {
-            hr = pDepthFrame->AccessUnderlyingBuffer(&nBufferSize, &pBuffer);            
+            hr = pDepthFrame->AccessUnderlyingBuffer(&nBufferSize, &pBuffer);   
+
+			///
+			//hr = colourFrame->AccessRawUnderlyingBuffer(&nBufferSize, &cBuffer);
+			///
         }
 
         if (SUCCEEDED(hr))
         {
             ProcessDepth(nTime, pBuffer, nWidth, nHeight, nDepthMinReliableDistance, nDepthMaxDistance);
+
+			//cout << cBuffer << endl;
         }
 
         SafeRelease(pFrameDescription);
@@ -207,20 +239,44 @@ HRESULT CDepthBasics::InitializeDefaultSensor()
     {
         // Initialize the Kinect and get the depth reader
         IDepthFrameSource* pDepthFrameSource = NULL;
+		
+		///
+		//IColorFrameSource* pColourFrameSource = NULL;
+		///
 
         hr = m_pKinectSensor->Open();
+		
+		///
+		//IMultiSourceFrameReader* multiSource = NULL;
+		//hr = m_pKinectSensor->OpenMultiSourceFrameReader(FrameSourceTypes_Depth | FrameSourceTypes_Color, &multiSource);
+		///
+
 
         if (SUCCEEDED(hr))
         {
             hr = m_pKinectSensor->get_DepthFrameSource(&pDepthFrameSource); //Gets the source of the depth frames
-        }
+			
+			///
+			///hr = m_pKinectSensor->get_ColorFrameSource(&pColourFrameSource);
+			//hr = m_pKinectSensor->get(&multiSource); //Gets the source of the depth frames
+			//hr = m_pKinectSensor->get_ColorFrameSource(&multiSource);
+			///
+		}
 
         if (SUCCEEDED(hr))
         {
             hr = pDepthFrameSource->OpenReader(&m_pDepthFrameReader); //Create a new reader for the depth frame source
+
+			///
+			//hr = pColourFrameSource->OpenReader(&m_pColourFrameReader); //Create a new reader for the depth frame source
+			///
         }
 
         SafeRelease(pDepthFrameSource); //Releases the pointer pDepthFrameSource and sets it to NULL
+
+		///
+		//SafeRelease(pColourFrameSource); //Releases the pointer pDepthFrameSource and sets it to NULL
+		///
     }
 
     if (!m_pKinectSensor || FAILED(hr))
